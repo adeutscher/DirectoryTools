@@ -384,20 +384,25 @@ class DirectoryTools:
         
         members = self.getMultiAttribute(groupDN,self.getProperty(index.MEMBER_ATTRIBUTE))
 
+        # This list will hold group definitions until we are done looking through non-group objects.
         nestedGroupList = []
         
-        for member in members:
-            # Cycle through group results.
-            
-            if member == searchName:
+        if not self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
+        
+            if searchName in members:
                 # If we are using a POSIX group, we can trust that the item is of the class we want.
                 # If members are DNs, then we have resolved the UID to an existing object.
                 if depth == 0:
                     self.searchedGroups = []
                 self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
                 return True
-            elif self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
-                
+        
+        else:
+            # self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN) is true
+            # We cannot count on the objects in this group to only be users.
+            for member in members:
+                # Cycle through group results.
+                    
                 if member == searchName:
                     self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
                     if depth == 0:
@@ -416,14 +421,15 @@ class DirectoryTools:
                     # Any object type other than the group is irrelevant, placing the else statement for the sake of verbosity.
                     self.printDebug("Observed non-matching object '%s'" % member,DEBUG_LEVEL_MAJOR,spaces=depth)
         
-        for nestedGroup in nestedGroupList:
-            if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1)):
-                if depth == 0:
-                    self.searchedGroups = []
-                return True
+            # We have completed cycling through the memberList variable for users, and have not found a matching user.
+            for nestedGroup in nestedGroupList:
+                if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1)):
+                    if depth == 0:
+                        self.searchedGroups = []
+                    return True
         if depth == 0:
             self.searchedGroups = []
-        # Fall back to false.
+        # Fall back to false if we have not gotten a True response back by this point.
         return False
 
     def isObjectOfClass(self,objectDN,objectClass):

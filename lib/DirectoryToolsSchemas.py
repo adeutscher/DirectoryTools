@@ -4,7 +4,10 @@ import DirectoryToolsIndexes as index
 template = {}
 
 def getTemplate(key):
-    return template[key]
+    try:
+        return template[key]
+    except KeyError:
+        return {}
 
 template['openldap'] = {
     index.GROUP_CLASS:'posixGroup',
@@ -28,13 +31,4 @@ template['ad'] = {
     index.MEMBER_ATTRIBUTE:'member',
     index.MEMBER_ATTRIBUTE_IS_DN:True,
     index.NESTED_GROUPS:True
-}
-    
-template['active-directory'] = {
-    'userClass':'person',
-    'groupClass':'group',
-    'userUIDAttribute':'sAMAccountName',
-    'groupUIDAttribute':'sAMAccountName',
-    'memberAttribute':'memberUid',
-    'memberAttributeIsDN':True,
 }

@@ -81,7 +81,8 @@ class DirectoryTools:
             self.printDebug("Successfully authenticated user '%s'." % userName, DEBUG_LEVEL_MINOR)
             return True
         except ldap.LDAPError:
-            traceback.print_exc(file=sys.stdout)
+            if(self.getProperty(index.DEBUG_LEVEL) >= DEBUG_LEVEL_EXTREME):
+                traceback.print_exc(file=sys.stdout)
             return False
     '''
     Flush all caches.

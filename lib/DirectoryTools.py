@@ -62,7 +62,7 @@ class DirectoryTools:
         self.printDebug("Attempting to authenticate user '%s'." % userName, DEBUG_LEVEL_MINOR)
 
         if userNameIsDN:
-            # The username has been provided in DN form for some reason.
+            # The username has been provided in DN form.
             # Don't need to bother resolving or confirming.
             # Authentication will throw the same error whether we have a non-existent user or a bad password.
             userDN = userName
@@ -77,6 +77,7 @@ class DirectoryTools:
         handle = self.getHandle()
         
         try:
+            # Attempt to do a simple bind. If anything goes wrong, we'll be thrown to our 'except'.
             result = handle.simple_bind_s(userDN,password)
             self.printDebug("Successfully authenticated user '%s'." % userName, DEBUG_LEVEL_MINOR)
             return True
@@ -118,6 +119,7 @@ class DirectoryTools:
     '''    
     def getGroupMembers(self,groupName,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0):
 
+        # Making sure that we have not already searched this group.
         if groupName not in self.searchedGroups:
                 self.searchedGroups.append(groupName)
                 self.printDebug("Getting members of group '%s'." % groupName,DEBUG_LEVEL_MAJOR)
@@ -164,7 +166,7 @@ class DirectoryTools:
                 
                 if self.getProperty(index.NESTED_GROUPS) and not (depth >= self.getProperty(index.MAX_DEPTH)) and self.isObjectGroup(member):
                     '''
-                    If this log is being executed we have confirmed three things: 
+                    If this section is being executed we have confirmed three things: 
                     * We want to search in nested groups.
                     * We have not yet exceeded the maximum search depth.
                     * The object is actually a group (kind of important!).
@@ -694,3 +696,11 @@ class DirectoryTools:
     '''
     def setProperty(self,key,value):
         properties[key] = value
+        
+    '''
+    Set multiple properties.
+    
+    @newProperties a dictionary of property values.
+    '''
+    def updateProperties(self,newProperties):
+        self.properties.update(newProperties)

@@ -117,7 +117,17 @@ class DirectoryTools:
     
     @return a list of all user accounts. Whether they are distinguished names or not depends on format of the LDAP server's group member property.
     '''    
-    def getGroupMembers(self,groupName,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0):
+    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0):
+
+        if not groupNameIsDN:
+            # We want to confirm that the group exists and get its Distinguished Name.
+            groupDN = self.resolveGroupDN(groupName)
+            if not groupDN:
+                self.printDebug("Could not locate group: %s" % groupName,DEBUG_LEVEL_MAJOR)
+                return []
+        else:
+            # Group name is already a DN.
+            groupDN = groupName
 
         # Making sure that we have not already searched this group.
         if groupName not in self.searchedGroups:
@@ -138,14 +148,6 @@ class DirectoryTools:
         #self.printDebug("Searching for member users in group '%s'. Query: %s: " % tuple([groupName,query]),DEBUG_LEVEL_MAJOR)
         query = '(%s=%s)'
         self.printDebug("Searching for members in group '%s'." % groupName,DEBUG_LEVEL_MAJOR)
-        
-        # We want to confirm that the group exists and get its Distinguished Name.
-        groupDN = self.resolveGroupDN(groupName)
-        
-        if not groupDN:
-            # Could not find group.
-            self.printDebug("Could not locate group: %s" % groupName,DEBUG_LEVEL_MAJOR)
-            return []
 
         members = self.getMultiAttribute(groupDN,self.getProperty(index.MEMBER_ATTRIBUTE))
         for member in members:
@@ -172,14 +174,10 @@ class DirectoryTools:
                     * The object is actually a group (kind of important!).
                     '''
                     
-                    memberUID = self.resolveGroupUID(member)
-                    if memberUID:
-                        self.printDebug("Searching within nested group '%s'" % member, DEBUG_LEVEL_MAJOR)
-                        memberList.extend(
-                            self.getGroupMembers(groupName=memberUID,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
-                        )
-                    else:
-                        self.printDebug("Could not resolve UID of nested group '%s'." % member, DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Searching within nested group '%s'" % member, DEBUG_LEVEL_MAJOR)
+                    memberList.extend(
+                        self.getGroupMembers(groupName=memberUID,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
+                    )
 
             else:
                 # POSIX-style members can be trusted to be the type they are labeled as.

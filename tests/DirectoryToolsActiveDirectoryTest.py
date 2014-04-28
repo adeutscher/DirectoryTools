@@ -8,7 +8,7 @@ import unittest
 README
 
 Before running this test, you will need to set up your LDAP server in the same way that I have.
-This test was done using a Windows Server 2008 domain, though it should by design also work on a Samba 4 domain.
+This test was done using a Windows Server 2008 domain controller, though it should by design also work on a Samba 4 domain.
 
 Users UIDs:
 - alan

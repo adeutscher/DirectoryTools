@@ -91,13 +91,18 @@ class DirectoryTools:
     TODO: Add arguments/logic to allow the user to flush a specific cache.
     '''
     def flushCaches(self):
+        # List of groups that we've already searched in for an object.
+        self.searchedGroups = []
+        
         # List of user objects that have been resolved.
         self.resolvedUsers = []
+        
         # Dictionary of UIDs indexed by their DN or their UID that stores their other value.
         self.resolvedUserValues = {}
         
         # List of group objects that have been resolved.
         self.resolvedGroups = []
+        
         # Dictionary of UIDs indexed by their DN or their UID that stores their other value.
         self.resolvedGroupValues = {}
         
@@ -176,7 +181,7 @@ class DirectoryTools:
                     
                     self.printDebug("Searching within nested group '%s'" % member, DEBUG_LEVEL_MAJOR)
                     memberList.extend(
-                        self.getGroupMembers(groupName=memberUID,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
+                        self.getGroupMembers(groupName=member,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
                     )
 
             else:
@@ -211,7 +216,6 @@ class DirectoryTools:
                 result = self.getSingleAttribute(dn=i,attribute=uidAttribute)
                 if result:
                     memberUIDList.append(result)
-            print memberUIDList
             return list(set(memberUIDList))
         else:
             # The list we are currently working on is already in the desired format.
@@ -308,6 +312,10 @@ class DirectoryTools:
     def getUserBaseDN(self):
         return "%s%s" % tuple([self.getProperty(index.USER_RDN),self.getProperty(index.BASE_DN)])
 
+    '''
+    Alias of getGroupMembers(), pre-configured for retrieving user objects.
+    
+    '''
     def getUsersInGroup(self,groupName,returnMembersAsDN=False):
         return self.getGroupMembers(groupName=groupName,returnMembersAsDN=returnMembersAsDN,objectClassFilter=self.getProperty(index.USER_CLASS),uidAttribute=self.getProperty(index.USER_UID_ATTRIBUTE))
 
@@ -336,11 +344,12 @@ class DirectoryTools:
         
         self.printDebug("Searching for user '{0}' in group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
         
+        if depth == 0:
+            self.flushCaches()
+        
         if groupName in self.searchedGroups:
             # We have already searched in this group.
             self.printDebug("Skipping group '{0}'. Already searched.".format(groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
-            if depth == 0:
-                self.searchedGroups = []
             return False
         self.searchedGroups.append(groupName)
         
@@ -693,7 +702,7 @@ class DirectoryTools:
     Set a single property.
     '''
     def setProperty(self,key,value):
-        properties[key] = value
+        self.properties[key] = value
         
     '''
     Set multiple properties.

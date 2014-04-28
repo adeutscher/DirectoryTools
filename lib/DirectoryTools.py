@@ -291,9 +291,16 @@ class DirectoryTools:
                 # Attempt to bind as the proxy user.
                 resultCode = connection.simple_bind_s(self.getProperty(index.PROXY_USER),self.getProperty(index.PROXY_PASSWORD))
                 self.proxyHandle = connection
-            except ldap.LDAPError:
+            except ldap.LDAPError as e:
                 # This exception is thrown when the call to connection.simple_bind_s fails.
                 print "Proxy connection failed."
+                print e
+                if e.args[0]['desc'] == 'Invalid credentials':
+                    # The error happened because the proxy connection was given the wrong credentials.
+                    print "Invalid proxy credentials."
+                    exit(2)
+                    
+                
                 traceback.print_exc(file=sys.stdout)
                 exit(1)
             self.printDebug("Successfully created proxy handle.",DEBUG_LEVEL_EXTREME)

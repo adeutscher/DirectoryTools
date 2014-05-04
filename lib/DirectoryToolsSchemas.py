@@ -32,3 +32,13 @@ template['ad'] = {
     index.MEMBER_ATTRIBUTE_IS_DN:True,
     index.NESTED_GROUPS:True
 }
+
+template['freeipa'] = {
+    index.GROUP_CLASS:'groupofnames',
+    index.USER_CLASS:'person',
+    index.USER_UID_ATTRIBUTE:'uid',
+    index.GROUP_UID_ATTRIBUTE:'cn',
+    index.MEMBER_ATTRIBUTE:'member',
+    index.MEMBER_ATTRIBUTE_IS_DN:True,
+    index.NESTED_GROUPS:True
+}

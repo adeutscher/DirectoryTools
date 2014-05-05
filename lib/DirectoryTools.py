@@ -20,6 +20,7 @@ class DirectoryTools:
         index.USE_SSL:False,
         index.USE_TLS:False,
         index.MAX_DEPTH:5,
+        index.NESTED_GROUPS:False,
         index.PROXY_USER:'',
         index.PROXY_PASSWORD:'',
         index.BASE_DN:'',

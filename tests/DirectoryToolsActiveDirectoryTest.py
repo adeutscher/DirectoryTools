@@ -43,7 +43,7 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
             indexes.SERVER_PORT:'3268',
             indexes.USE_SSL:False,
             indexes.PROXY_USER:'CN=Administrator,CN=Users,DC=sandbox,DC=lan',
-            indexes.PROXY_PASSWORD:'administratorPassword',
+            indexes.PROXY_PASSWORD:'MyAdminPassword1!',
             indexes.DEBUG_LEVEL:0
         }
 
@@ -64,7 +64,7 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
         self.userD = 'dave'
         
         # All users have the same password in my test environment.
-        self.userPassword = 'Password123$'
+        self.userPassword = 'MyUserPassword1!'
         
 if __name__ == '__main__':
     unittest.main()

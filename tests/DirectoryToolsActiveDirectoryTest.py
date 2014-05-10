@@ -31,7 +31,7 @@ Groups:
     Members: carl, dave
 '''
 
-class DirectoryToolsFreeIPATest(common,unittest.TestCase):
+class DirectoryToolsActiveDirectoryTest(common,unittest.TestCase):
     
     def setUp(self):
         

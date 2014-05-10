@@ -19,6 +19,7 @@ class DirectoryTools:
         index.SERVER_PORT:389,
         index.USE_SSL:False,
         index.USE_TLS:False,
+        index.LDAP_PROPERTIES:{},
         index.MAX_DEPTH:5,
         index.NESTED_GROUPS:False,
         index.PROXY_USER:'',
@@ -232,8 +233,14 @@ class DirectoryTools:
         uri = '%s://%s:%s' % tuple([protocol,self.getProperty(index.SERVER_ADDRESS),self.getProperty(index.SERVER_PORT)])
         self.printDebug("Connection URI: %s" % uri,DEBUG_LEVEL_MAJOR)
         
+        connectionProperties = self.getProperty(index.LDAP_PROPERTIES)
+        
         connection = ldap.initialize(uri)
-
+        
+        for i in connectionProperties:
+            self.printDebug('Applying connection property \'{0}\' to connection. Value: \'{1}\''.format(i,connectionProperties[i]),self.DEBUG_LEVEL_MAJOR)
+            connection.set_option(i,connectionProperties[i])
+        
         return connection
 
     def getMultiAttribute(self,dn,attribute):

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import DirectoryToolsIndexes as index
+import ldap
 template = {}
 
 def getTemplate(key):
@@ -30,7 +31,8 @@ template['ad'] = {
     index.GROUP_UID_ATTRIBUTE:'sAMAccountName',
     index.MEMBER_ATTRIBUTE:'member',
     index.MEMBER_ATTRIBUTE_IS_DN:True,
-    index.NESTED_GROUPS:True
+    index.NESTED_GROUPS:True,
+    index.LDAP_PROPERTIES:{ldap.OPT_REFERRALS:0}
 }
 
 template['freeipa'] = {

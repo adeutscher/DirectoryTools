@@ -142,4 +142,5 @@ class DirectoryToolsTestsCommon(object):
         self.assertNotEquals(oldValueB,newValueB)
         
 if __name__ == '__main__':
-    unittest.main()
+    print "Run these tests through an inheriting class that creates a connection to an LDAP server through DirectoryTools. Aborting..."
+    exit(1)

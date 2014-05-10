@@ -239,6 +239,16 @@ class DirectoryTools:
     def getMultiAttribute(self,dn,attribute):
         return self.getObjectAttribute(dn=dn,attribute=attribute)
 
+    def getMultiAttributes(self,dn,attributes):
+        results = self.query('objectClass=*',attributes,dn)
+        try:
+            dn,attributes = results[0]
+            return attributes
+        except:
+            # Assuming the index wasn't found.
+            # Return an empty dictionary.
+            return {}
+
     '''
     Simple query to get all values of an attribute for a single object.
     

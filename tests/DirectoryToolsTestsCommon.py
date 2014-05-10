@@ -67,14 +67,28 @@ class DirectoryToolsTestsCommon(object):
     '''
     Tests the retrieval of a multi-valued attribute from an object. DirectoryTools returns multi-valued objects as lists.
     '''
-    def test_getMultiAttributes(self):
+    def test_getMultiAttribute(self):
         
         targetAttribute = 'memberOf'
         targetDN = self.auth.resolveGroupDN(self.employeeGroup)
         
-        attributeList = self.auth.getMultiAttribute(targetDN,targetAttribute)
+        attributeList = self.auth.getMultiAttribute(targetDN,self.targetAttribute)
         
         print 'Displaying values of the attribute "{0}" for the object "{1}": {2}'.format(targetAttribute,targetDN,attributeList)
+        
+    '''
+    Need to get multiple types of attributes at the same time.
+    '''    
+    def test_getMultiAttributes(self):
+        
+        targetDN = self.auth.resolveGroupDN(self.employeeGroup)
+        
+        results = self.auth.getMultiAttributes(targetDN,self.targetAttributes)
+        
+        print "Results: {0}".format(results)
+        
+        for i in results:
+                self.assertTrue(len(results[i]) > 0)
         
     '''
     Test that we can detect whether or not a user is in the specified group.

@@ -66,5 +66,10 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
         # All users have the same password in my test environment.
         self.userPassword = 'UserPassword1!'
         
+        # Target attribute for the getMultiAttribute test.
+        self.targetAttribute = 'email'
+        # Target attributes for the getMultiAttributes test.
+        self.targetAttributes = ['objectClass','cn']
+        
 if __name__ == '__main__':
     unittest.main()

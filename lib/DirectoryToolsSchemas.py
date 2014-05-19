@@ -44,3 +44,13 @@ template['freeipa'] = {
     index.MEMBER_ATTRIBUTE_IS_DN:True,
     index.NESTED_GROUPS:True
 }
+
+template['openldap'] = {
+    index.GROUP_CLASS:'posixGroup',
+    index.USER_CLASS:'person',
+    index.USER_UID_ATTRIBUTE:'uid',
+    index.GROUP_UID_ATTRIBUTE:'cn',
+    index.MEMBER_ATTRIBUTE:'memberUid',
+    index.MEMBER_ATTRIBUTE_IS_DN:False,
+    index.NESTED_GROUPS:False
+}

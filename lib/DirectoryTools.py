@@ -128,7 +128,7 @@ class DirectoryTools:
 
         if not groupNameIsDN:
             # We want to confirm that the group exists and get its Distinguished Name.
-            groupDN = self.resolveGroupDN(groupName)
+            groupDN = self.resolveGroupDN(groupName,self.getProperty(index.GROUP_UID_ATTRIBUTE))
             if not groupDN:
                 self.printDebug("Could not locate group: %s" % groupName,DEBUG_LEVEL_MAJOR)
                 return []
@@ -205,7 +205,7 @@ class DirectoryTools:
             # The user has requested the return list in DN format, but the list that they have is not in DN format.
             memberDNList = []
             for i in memberList:
-                objectDN = self.resolveObjectDN(i,objectClass=objectClassFilter,uidAttribute=uidAttribute)
+                objectDN = self.resolveObjectDN(objectName=i,objectClass=objectClassFilter,indexAttribute=uidAttribute)
                 if objectDN:
                     memberDNList.append(objectDN)
                 
@@ -287,12 +287,19 @@ class DirectoryTools:
     
     @return the value of a key out of either the properties or defaults dictionary.
     '''
-    def getProperty(self,key):
+    def getProperty(self,key,exitOnFail=True,printDebugMessage=True):
         try:
-                return self.properties[key]
+            if printDebugMessage:
+                self.printDebug("Fetching property '{0}'".format(key),self.DEBUG_LEVEL_MINOR)
+            return self.properties[key]
         except KeyError:
-            print "Property '%s' not found! Exiting..." % key
-            exit(1)
+            if exitOnFail:
+                print "Property '{0}' not found. Exiting...".format(key)
+                exit(1)
+            elif printDebugMessage:
+                self.printDebug("Property '{0}' not found.".format(key),self.DEBUG_LEVEL_MINOR)
+                
+            return None
     
     '''
     Get a connection handle for the lookup proxy.
@@ -520,7 +527,7 @@ class DirectoryTools:
     @return True if the message was transmitted. False otherwise.
     '''
     def printDebug(self,message,secrecyLevel=100,spaces=0):
-        if self.getProperty(index.DEBUG_LEVEL) >= int(secrecyLevel):
+        if self.getProperty(index.DEBUG_LEVEL,printDebugMessage=False) >= int(secrecyLevel):
             print "{0}DEBUG({1}): {2}".format(self.makeSpaces(spaces),secrecyLevel,message)
             return True
         return False
@@ -637,7 +644,9 @@ class DirectoryTools:
     
     @return a tuple drawn from resolveObjectDN. First value is a boolean indicator of success/failure. If the first value is true, then the second value will be the object's distinguished name.
     '''
-    def resolveObjectDN(self,objectClass,indexAttribute,objectName,base):
+    def resolveObjectDN(self,objectClass,indexAttribute,objectName,base=None):
+        if not base:
+            base=self.getProperty(index.BASE_DN)
         query = '(&(objectClass=%s)(%s=%s))' % tuple([objectClass,indexAttribute,objectName])
         self.printDebug("Resolving the DN of an item with the objectClass '%s': %s" % tuple([objectClass,query]),DEBUG_LEVEL_MAJOR)
         
@@ -727,6 +736,7 @@ class DirectoryTools:
     Set a single property.
     '''
     def setProperty(self,key,value):
+        self.printDebug("Setting the '{0}' property to the value of '{1}' (Old value: '{2}')".format(key,value,self.getProperty(key)),self.DEBUG_LEVEL_MINOR)
         self.properties[key] = value
         
     '''

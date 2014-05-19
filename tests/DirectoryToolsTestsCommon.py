@@ -26,7 +26,7 @@ class DirectoryToolsTestsCommon(object):
     '''
     Tests retrieving information on which users belong to a group.
     '''
-    def test_getGroupMembers(self):
+    def test_getNestedGroupMembers(self):
         
         # Searching the service group, which has both direct and indirect members.
         searchedGroup = self.serviceGroup
@@ -48,15 +48,19 @@ class DirectoryToolsTestsCommon(object):
         for i in range(len(nestedMemberDNList)):
             self.assertTrue(len(nestedMemberDNList[i]) > len(nestedMemberList[i]))
 
+    def test_getGroupMembers(self):
+
         # Test getting group members without nesting. Direct user memberships only.
         self.auth.setProperty(indexes.NESTED_GROUPS,False)
+        
+        searchedGroup = self.serviceGroup
         directMemberList = self.auth.getUsersInGroup(searchedGroup)
         print 'Displaying members of {0} group: {1}'.format(searchedGroup,directMemberList)
         self.assertEquals(len(directMemberList),self.serviceGroupDirectUserMemberCount)
         
         # Search and retrieved distinguished names. A DN shall be considered valid if it is longer than the login name.
         directMemberDNList = self.auth.getUsersInGroup(searchedGroup,returnMembersAsDN=True)
-        print 'Displaying members of {0} group: {1}'.format(searchedGroup,nestedMemberDNList)
+        print 'Displaying members of {0} group: {1}'.format(searchedGroup,directMemberDNList)
         
         # Make sure we have the same number of results as before.
         self.assertEquals(len(directMemberDNList),len(directMemberList))
@@ -115,7 +119,7 @@ class DirectoryToolsTestsCommon(object):
         # Setting this boolean property to the inverse of its previous value.
         targetProperty = indexes.NESTED_GROUPS
         oldValue = self.auth.getProperty(targetProperty)
-        self.auth.setProperty(targetProperty,not bool(targetProperty))
+        self.auth.setProperty(targetProperty,not bool(oldValue))
         newValue = self.auth.getProperty(targetProperty)
         self.assertNotEquals(oldValue,newValue)
         

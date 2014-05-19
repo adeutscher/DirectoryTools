@@ -27,6 +27,7 @@ class DirectoryTools:
         index.BASE_DN:'',
         index.USER_RDN:'',
         index.GROUP_RDN:'',
+        index.PROXY_IS_ANONYMOUS:False,
     }
     
     DEBUG_LEVEL_NONE = 0
@@ -309,12 +310,13 @@ class DirectoryTools:
     def getProxyHandle(self):
         
         if not self.proxyHandle:
-            # Get a handle for our server.
+            # Get a handle for our server, if one is not already present.
             connection = self.getHandle()
             
             try:
-                # Attempt to bind as the proxy user.
-                resultCode = connection.simple_bind_s(self.getProperty(index.PROXY_USER),self.getProperty(index.PROXY_PASSWORD))
+                if not self.getProperty(index.PROXY_IS_ANONYMOUS):
+                    # Attempt to bind as the proxy user if we aren't searching anonymously.
+                    resultCode = connection.simple_bind_s(self.getProperty(index.PROXY_USER),self.getProperty(index.PROXY_PASSWORD))
                 self.proxyHandle = connection
             except ldap.LDAPError as e:
                 # This exception is thrown when the call to connection.simple_bind_s fails.

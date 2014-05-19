@@ -44,7 +44,8 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
             indexes.USE_SSL:False,
             indexes.PROXY_USER:'uid=admin,cn=users,cn=accounts,dc=freeipa,dc=lan',
             indexes.PROXY_PASSWORD:'MyAdminPassword1!',
-            indexes.DEBUG_LEVEL:3
+            indexes.DEBUG_LEVEL:3,
+            #indexes.PROXY_IS_ANONYMOUS:True,
         }
 
         self.auth = DirectoryTools.DirectoryTools(properties,'freeipa')

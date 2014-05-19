@@ -13,6 +13,7 @@ DEBUG_LEVEL_EXTREME = 3
 
 class DirectoryTools:
 
+    # Default properties.
     properties = {
         index.DEBUG_LEVEL:0,
         index.SERVER_ADDRESS:'',
@@ -47,7 +48,7 @@ class DirectoryTools:
             try: 
                 self.properties.update(schema.getTemplate(template))
             except:
-                print "Schema template '%s' not found. Exiting..." % template
+                print "Schema template '{0}' not found. Exiting...".format(template)
                 exit(1)        
         if properties:    
             try:        
@@ -62,7 +63,7 @@ class DirectoryTools:
     '''
     def authenticate(self,userName,password,userNameIsDN=False):
         
-        self.printDebug("Attempting to authenticate user '%s'." % userName, DEBUG_LEVEL_MINOR)
+        self.printDebug("Attempting to authenticate user '{0}'.".format(userName), DEBUG_LEVEL_MINOR)
 
         if userNameIsDN:
             # The username has been provided in DN form.
@@ -74,7 +75,7 @@ class DirectoryTools:
             
             if not userDN:
                 # Don't bother authenticating if the user doesn't exist.
-                self.printDebug("User '%s' cannot be found." % userName, DEBUG_LEVEL_MINOR)
+                self.printDebug("User '{0}' cannot be found.".format(userName), DEBUG_LEVEL_MINOR)
                 return False
         
         handle = self.getHandle()
@@ -82,7 +83,7 @@ class DirectoryTools:
         try:
             # Attempt to do a simple bind. If anything goes wrong, we'll be thrown to our 'except'.
             result = handle.simple_bind_s(userDN,password)
-            self.printDebug("Successfully authenticated user '%s'." % userName, DEBUG_LEVEL_MINOR)
+            self.printDebug("Successfully authenticated user '{0}'.".format(userName), DEBUG_LEVEL_MINOR)
             return True
         except ldap.LDAPError:
             if(self.getProperty(index.DEBUG_LEVEL) >= DEBUG_LEVEL_EXTREME):
@@ -118,7 +119,7 @@ class DirectoryTools:
     @return combination relative group base DN with the base DN.
     '''
     def getGroupBaseDN(self):
-        return "%s%s" % tuple([self.getProperty(index.GROUP_RDN),self.getProperty(index.BASE_DN)])
+        return "{0}{1}".format(self.getProperty(index.GROUP_RDN),self.getProperty(index.BASE_DN))
           
     '''
     List all members of a group.
@@ -131,7 +132,7 @@ class DirectoryTools:
             # We want to confirm that the group exists and get its Distinguished Name.
             groupDN = self.resolveGroupDN(groupName,self.getProperty(index.GROUP_UID_ATTRIBUTE))
             if not groupDN:
-                self.printDebug("Could not locate group: %s" % groupName,DEBUG_LEVEL_MAJOR)
+                self.printDebug("Could not locate group: {0}".format(groupName),DEBUG_LEVEL_MAJOR)
                 return []
         else:
             # Group name is already a DN.
@@ -140,22 +141,22 @@ class DirectoryTools:
         # Making sure that we have not already searched this group.
         if groupName not in self.searchedGroups:
                 self.searchedGroups.append(groupName)
-                self.printDebug("Getting members of group '%s'." % groupName,DEBUG_LEVEL_MAJOR)
+                self.printDebug("Getting members of group '{0}'.".format(groupName),DEBUG_LEVEL_MAJOR)
         else:
-            self.printDebug("Skipping already searched group: %s" % groupName, DEBUG_LEVEL_MAJOR)
+            self.printDebug("Skipping already searched group: {0}".format(groupName), DEBUG_LEVEL_MAJOR)
             return []
         
         memberList = []
         
         if depth > self.getProperty(index.MAX_DEPTH):
-            self.printDebug("Exceeded max depth of %d." % self.getProperty(index.MAX_DEPTH), DEBUG_LEVEL_MINOR)
+            self.printDebug("Exceeded max depth of {1}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR)
             return memberList
 
         # Compile query for finding group.
         #query = '(&(objectClass=%s)(%s=%s))' % tuple([self.getProperty(index.GROUP_CLASS),groupIdentifier,groupName])
         #self.printDebug("Searching for member users in group '%s'. Query: %s: " % tuple([groupName,query]),DEBUG_LEVEL_MAJOR)
         query = '(%s=%s)'
-        self.printDebug("Searching for members in group '%s'." % groupName,DEBUG_LEVEL_MAJOR)
+        self.printDebug("Searching for members in group '{0}'.".format(groupName),DEBUG_LEVEL_MAJOR)
 
         members = self.getMultiAttribute(groupDN,self.getProperty(index.MEMBER_ATTRIBUTE))
         for member in members:
@@ -167,11 +168,11 @@ class DirectoryTools:
                 '''
                 
                 if not objectClassFilter:
-                    self.printDebug("Adding object '%s' to list (No Filter)." % member, DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Adding object '{0}' to list (No Filter).".format(member), DEBUG_LEVEL_MAJOR)
                     memberList.append(member)
                 elif objectClassFilter and self.isObjectOfClass(member,objectClassFilter):
                     # Either we are not filtering by group, or the object at this DN is of the class we want to filter by.
-                    self.printDebug("Adding object '%s' to list (Passed Filter)." % member, DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Adding object '{0}' to list (Passed Filter).".format(member), DEBUG_LEVEL_MAJOR)
                     memberList.append(member)
                 
                 if self.getProperty(index.NESTED_GROUPS) and not (depth >= self.getProperty(index.MAX_DEPTH)) and self.isObjectGroup(member):
@@ -182,7 +183,7 @@ class DirectoryTools:
                     * The object is actually a group (kind of important!).
                     '''
                     
-                    self.printDebug("Searching within nested group '%s'" % member, DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Searching within nested group '{0}'".format(member), DEBUG_LEVEL_MAJOR)
                     memberList.extend(
                         self.getGroupMembers(groupName=member,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
                     )
@@ -199,7 +200,7 @@ class DirectoryTools:
             # Done searching through groups and we're about to sort through the top level. Flushing list of recent searches.
             self.searchedGroups = []
             
-        self.printDebug("Finished gathering members of group '%s'. Formatting results." % groupName,DEBUG_LEVEL_MAJOR)
+        self.printDebug("Finished gathering members of group '{0}'. Formatting results.".format(groupName),DEBUG_LEVEL_MAJOR)
         
         # We want to return a deduped listing of members.
         if returnMembersAsDN and not self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
@@ -231,8 +232,8 @@ class DirectoryTools:
         
         protocol = ('ldap','ldaps')[self.getProperty(index.USE_SSL)]
         
-        uri = '%s://%s:%s' % tuple([protocol,self.getProperty(index.SERVER_ADDRESS),self.getProperty(index.SERVER_PORT)])
-        self.printDebug("Connection URI: %s" % uri,DEBUG_LEVEL_MAJOR)
+        uri = '{0}://{1}:{2}'.format(protocol,self.getProperty(index.SERVER_ADDRESS),self.getProperty(index.SERVER_PORT))
+        self.printDebug("Connection URI: {0}".format(uri),DEBUG_LEVEL_MAJOR)
         
         connectionProperties = self.getProperty(index.LDAP_PROPERTIES)
         
@@ -344,7 +345,7 @@ class DirectoryTools:
     @return combination relative user base DN with the base DN.
     '''
     def getUserBaseDN(self):
-        return "%s%s" % tuple([self.getProperty(index.USER_RDN),self.getProperty(index.BASE_DN)])
+        return "{0}{1}".format(self.getProperty(index.USER_RDN),self.getProperty(index.BASE_DN))
 
     '''
     Alias of getGroupMembers(), pre-configured for retrieving user objects.
@@ -388,7 +389,7 @@ class DirectoryTools:
         self.searchedGroups.append(groupName)
         
         if int(depth) > self.getProperty(index.MAX_DEPTH):
-            self.printDebug("Exceeded max depth of %d." % self.getProperty(index.MAX_DEPTH), DEBUG_LEVEL_MINOR,spaces=depth)
+            self.printDebug("Exceeded max depth of {0}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR,spaces=depth)
             if depth == 0:
                 self.searchedGroups = []
             return False
@@ -432,6 +433,7 @@ class DirectoryTools:
         nestedGroupList = []
         
         if not self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
+            # Groups in the LDAP server do not store its member properties as distinguished names.
         
             if searchName in members:
                 # If we are using a POSIX group, we can trust that the item is of the class we want.
@@ -442,6 +444,8 @@ class DirectoryTools:
                 return True
         
         else:
+            # Groups in the LDAP server stores its member properties as distinguished names.
+            
             # self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN) is true
             # We cannot count on the objects in this group to only be users.
             for member in members:
@@ -463,7 +467,7 @@ class DirectoryTools:
                 else:
                     # If the if statement is not triggered, then the object is a object.
                     # Any object type other than the group is irrelevant, placing the else statement for the sake of verbosity.
-                    self.printDebug("Observed non-matching object '%s'" % member,DEBUG_LEVEL_MAJOR,spaces=depth)
+                    self.printDebug("Observed non-matching object '{0}'".format(member),DEBUG_LEVEL_MAJOR,spaces=depth)
         
             # We have completed cycling through the memberList variable for users, and have not found a matching user.
             for nestedGroup in nestedGroupList:
@@ -476,8 +480,14 @@ class DirectoryTools:
         # Fall back to false if we have not gotten a True response back by this point.
         return False
 
+    '''
+    Check to see if an object has a certain objectClass value.
+    
+    @param objectDN the distinguished name of the object that we want to verify.
+    @param objectClass the class value that we want to check for.
+    '''
     def isObjectOfClass(self,objectDN,objectClass):
-        self.printDebug("Checking whether the object at '%s' is of class '%s'" % tuple([objectDN,objectClass]),DEBUG_LEVEL_MAJOR)
+        self.printDebug("Checking whether the object at '{0}' is of class '{1}'".format(objectDN,objectClass),DEBUG_LEVEL_MAJOR)
         try:
             # Attempt to find the object in the cache.
             if objectDN in self.classCache[objectClass]:
@@ -511,6 +521,11 @@ class DirectoryTools:
     def isUserInGroup(self,userName,groupName,userNameIsDN=False,groupNameIsDN=False):
         return self.isObjectInGroup(objectName=userName,groupName=groupName,objectNameIsDN=userNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=self.getProperty(index.USER_UID_ATTRIBUTE),objectClass=self.getProperty(index.USER_CLASS),objectBase=self.getUserBaseDN())
     
+    '''
+    Pad out a message with spaces.
+    
+    @param spaceCount the number of spaces to pad by.
+    '''
     def makeSpaces(self,spaceCount=0):
         returnValue = ''
         i = 0
@@ -553,14 +568,15 @@ class DirectoryTools:
         returnList = []
 
         self.printDebug("Executing LDAP search.",DEBUG_LEVEL_EXTREME)
-        self.printDebug("    Filter: %s" % str(query),DEBUG_LEVEL_EXTREME)
-        self.printDebug("    Base: %s" % str(base),DEBUG_LEVEL_EXTREME)
+        self.printDebug("    Filter: {0}".format(str(query)),DEBUG_LEVEL_EXTREME)
+        self.printDebug("    Base: {0}".format(str(base)),DEBUG_LEVEL_EXTREME)
         
         try:        
             results = handle.search_s(base,ldap.SCOPE_SUBTREE,query,attributes)
         except:
             self.printDebug("BAD QUERY",DEBUG_LEVEL_EXTREME)
             traceback.print_exc(file=sys.stdout)
+            # Return the empty list.
             return returnList
         for result in results:
             dn,attrs = result
@@ -581,10 +597,11 @@ class DirectoryTools:
         if not uidAttribute:
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
         if groupName in self.resolvedGroups:
-            self.printDebug("Using cached DN for '%s'. Value: %s" % tuple([groupName,self.resolvedGroupValues[groupName]]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(groupName,self.resolvedGroupValues[groupName]),DEBUG_LEVEL_MAJOR)
             return self.resolvedGroupValues[groupName]
         returnValue = self.resolveObjectDN(self.getProperty(index.GROUP_CLASS),uidAttribute,groupName,self.getGroupBaseDN())
     
+        # Add to the list of resolved groups.
         self.resolvedGroups.append(groupName)
         self.resolvedGroupValues[groupName] = returnValue
         
@@ -602,12 +619,12 @@ class DirectoryTools:
             # No override provided.
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
         
-        query = "(&(objectClass=%s)(%s=*))" % tuple([self.getProperty(index.GROUP_CLASS),self.getProperty(index.GROUP_UID_ATTRIBUTE)])
-        self.printDebug("Query for value of '%s' for DN of '%s': %s" % tuple([uidAttribute,groupDN,query]), DEBUG_LEVEL_MAJOR)
+        query = "(&(objectClass={0})({1}=*))".format(self.getProperty(index.GROUP_CLASS),self.getProperty(index.GROUP_UID_ATTRIBUTE))
+        self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,groupDN,query), DEBUG_LEVEL_MAJOR)
 
         # Checking cached values.
         if groupDN in self.resolvedGroupValues:
-            self.printDebug("Using cached UID for '%s'. Value: %s" % tuple([groupDN,self.resolvedGroupValues[groupDN]]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(groupDN,self.resolvedGroupValues[groupDN]),DEBUG_LEVEL_MAJOR)
             return self.resolvedGroupValues[groupDN]
         
         result = self.query(query,[uidAttribute],groupDN)
@@ -649,8 +666,8 @@ class DirectoryTools:
     def resolveObjectDN(self,objectClass,indexAttribute,objectName,base=None):
         if not base:
             base=self.getProperty(index.BASE_DN)
-        query = '(&(objectClass=%s)(%s=%s))' % tuple([objectClass,indexAttribute,objectName])
-        self.printDebug("Resolving the DN of an item with the objectClass '%s': %s" % tuple([objectClass,query]),DEBUG_LEVEL_MAJOR)
+        query = '(&(objectClass={0})({1}={2}))'.format(objectClass,indexAttribute,objectName)
+        self.printDebug("Resolving the DN of an item with the objectClass '{0}': {1}".format(objectClass,query),DEBUG_LEVEL_MAJOR)
         
         result = self.query(query,['distinguishedName'],base=base)
         if len(result) > 0:
@@ -681,7 +698,7 @@ class DirectoryTools:
         if not uidAttribute:
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
         if userName in self.resolvedUsers:
-            self.printDebug("Using cached DN for '%s'. Value: %s" % tuple([userName,self.resolvedUserValues[userName]]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(userName,self.resolvedUserValues[userName]),DEBUG_LEVEL_MAJOR)
             return self.resolvedUserValues[userName]
         returnValue = self.resolveObjectDN(self.getProperty(index.USER_CLASS),uidAttribute,userName,self.getUserBaseDN())
         
@@ -702,12 +719,12 @@ class DirectoryTools:
             # No override provided.
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
         
-        query = "(&(objectClass=%s)(%s=*))" % tuple([self.getProperty(index.USER_CLASS),self.getProperty(index.USER_UID_ATTRIBUTE)])
-        self.printDebug("Query for value of '%s' for DN of '%s': %s" % tuple([uidAttribute,userDN,query]), DEBUG_LEVEL_MAJOR)
+        query = "(&(objectClass={0})({1}=*))".format(self.getProperty(index.USER_CLASS),self.getProperty(index.USER_UID_ATTRIBUTE))
+        self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,userDN,query), DEBUG_LEVEL_MAJOR)
 
         # Checking cached values.
         if userDN in self.resolvedUsers:
-            self.printDebug("Using cached UID for '%s'. Value: %s" % tuple([userDN,self.resolvedUserValues[userDN]]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(userDN,self.resolvedUserValues[userDN]),DEBUG_LEVEL_MAJOR)
             return self.resolvedUserValues[userDN]
         
         result = self.query(query,[uidAttribute],userDN)

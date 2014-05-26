@@ -2,6 +2,8 @@
 __version__ = 0.1
 
 import ldap,re,sys,traceback
+from time import time
+from datetime import datetime
 
 import DirectoryToolsIndexes as index
 import DirectoryToolsSchemas as schema
@@ -41,8 +43,6 @@ class DirectoryTools:
     searchedGroups = []
 
     def __init__(self,properties=False,template='openldap'):
-        
-        self.flushCaches()
         
         if template:
             try: 
@@ -89,29 +89,22 @@ class DirectoryTools:
             if(self.getProperty(index.DEBUG_LEVEL) >= DEBUG_LEVEL_EXTREME):
                 traceback.print_exc(file=sys.stdout)
             return False
-    '''
-    Flush all caches.
-    
-    TODO: Add arguments/logic to allow the user to flush a specific cache.
-    '''
-    def flushCaches(self):
-        # List of groups that we've already searched in for an object.
-        self.searchedGroups = []
-        
-        # List of user objects that have been resolved.
-        self.resolvedUsers = []
-        
-        # Dictionary of UIDs indexed by their DN or their UID that stores their other value.
-        self.resolvedUserValues = {}
-        
-        # List of group objects that have been resolved.
-        self.resolvedGroups = []
-        
-        # Dictionary of UIDs indexed by their DN or their UID that stores their other value.
-        self.resolvedGroupValues = {}
-        
-        self.classCache = {}
-        self.notOfClassCache = {}
+            
+    def flushCaches(self,category=False,cacheId=False):
+        try:
+            if type(category) is str and type(cacheId) is str:
+                # A specific cache ID was requested in a category.
+                del self.cache[category][cacheId]
+            elif type(category) is str:
+                # A category was specified, but not a cache Id.
+                # Flush all items in this category.
+                if category in self.cache:
+                    del self.cache[category]
+            else:
+                # No category was specified, flushing all caches by re-declaring the cache.
+                self.cache = {}
+        except:
+            pass
 
     '''
     Combine the relative group base DN with the base DN.
@@ -126,8 +119,12 @@ class DirectoryTools:
     
     @return a list of all user accounts. Whether they are distinguished names or not depends on format of the LDAP server's group member property.
     '''    
-    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0):
+    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0,cacheId=True):
 
+        cacheCategory = 'searchedGroups'
+        cacheId = self.initCache(cacheCategory,cacheId)
+        
+        
         if not groupNameIsDN:
             # We want to confirm that the group exists and get its Distinguished Name.
             groupDN = self.resolveGroupDN(groupName,self.getProperty(index.GROUP_UID_ATTRIBUTE))
@@ -139,8 +136,8 @@ class DirectoryTools:
             groupDN = groupName
 
         # Making sure that we have not already searched this group.
-        if groupName not in self.searchedGroups:
-                self.searchedGroups.append(groupName)
+        if groupName not in self.cache[cacheCategory][cacheId]:
+                self.cache[cacheCategory][cacheId][groupName] = 1
                 self.printDebug("Getting members of group '{0}'.".format(groupName),DEBUG_LEVEL_MAJOR)
         else:
             self.printDebug("Skipping already searched group: {0}".format(groupName), DEBUG_LEVEL_MAJOR)
@@ -196,9 +193,8 @@ class DirectoryTools:
         if depth > 0:
             # We are not in the first call of the function. Return the list as we have it right now to be processed at the top level.
             return memberList
-        else:
-            # Done searching through groups and we're about to sort through the top level. Flushing list of recent searches.
-            self.searchedGroups = []
+        
+        # Begin top-level processing. The following code should only be processed if we're in the top call of this method.
             
         self.printDebug("Finished gathering members of group '{0}'. Formatting results.".format(groupName),DEBUG_LEVEL_MAJOR)
         
@@ -354,6 +350,45 @@ class DirectoryTools:
     def getUsersInGroup(self,groupName,returnMembersAsDN=False):
         return self.getGroupMembers(groupName=groupName,returnMembersAsDN=returnMembersAsDN,objectClassFilter=self.getProperty(index.USER_CLASS),uidAttribute=self.getProperty(index.USER_UID_ATTRIBUTE))
 
+
+    def initCache(self,category='general',cacheId=True):
+        defaultCacheId = 'general'
+        
+        # Make sure that the cache object is initialized.   
+        try:
+            if type(self.cache) is not dict:
+                self.cache = {}
+        except NameError:
+            self.cache = {}
+            
+        # Make sure that the category is initialized.
+        if category not in self.cache:
+            self.cache[category] = {}
+        
+        # Confirm the cache ID that we'll be working with.
+        if cacheId and type(cacheId) is bool:
+            # Need to generate a new cache Id.
+            
+            # Using a UNIX timestamp in milliseconds to get my cache Id.
+            timeObj = datetime.now()
+            cacheId =  str(time()) + str(timeObj.microsecond)
+        elif cacheId:
+            # We have been given a cache Id. If it doesn't already exist, we need to make it.
+            
+            # Make sure that we are working with a string.
+            cacheId = str(cacheId)
+        else:
+            # Not using a specific cache Id. Defaulting to general.
+            cacheId = defaultCacheId
+            
+        # Make sure that the cache ID of the category is initialized.
+        # Do not overwrite an existing dictionary, but correct any non-dictionary that has snuck in.
+        if cacheId not in self.cache[category] or type(self.cache[category][cacheId]) is not dict:
+            self.cache[category][cacheId] = {}
+        
+        # Return the cache id that we are using. A recursive function must use the same cache Id.
+        return cacheId
+
     '''
     Confirms that the specified object is a group.
     
@@ -375,23 +410,21 @@ class DirectoryTools:
     @param objectClass the class of the object we're searching for.
     @param objectBase the base DN to search for this object in.
     '''
-    def isObjectInGroup(self,objectName,groupName,objectNameIsDN=False,groupNameIsDN=False,objectIdentifier=False,objectClass=False,objectBase=False,depth=0):
+    def isObjectInGroup(self,objectName,groupName,objectNameIsDN=False,groupNameIsDN=False,objectIdentifier=False,objectClass=False,objectBase=False,depth=0,cacheId=True):
+        
+        cacheCategory='searchedGroups'
+        cacheId = self.initCache(cacheCategory,cacheId)
         
         self.printDebug("Searching for user '{0}' in group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
         
-        if depth == 0:
-            self.flushCaches()
-        
-        if groupName in self.searchedGroups:
+        if groupName in self.cache[cacheCategory][cacheId]:
             # We have already searched in this group.
             self.printDebug("Skipping group '{0}'. Already searched.".format(groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
             return False
-        self.searchedGroups.append(groupName)
+        self.cache[cacheCategory][cacheId][groupName] = 1
         
         if int(depth) > self.getProperty(index.MAX_DEPTH):
             self.printDebug("Exceeded max depth of {0}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR,spaces=depth)
-            if depth == 0:
-                self.searchedGroups = []
             return False
         
         # We need the DN of the group to get its attributes.
@@ -399,12 +432,11 @@ class DirectoryTools:
             # No need to resolve, groupName provided as DN.
             groupDN = groupName
         else:
+            # Group DN needs to be resolved, UID was provided.
             groupDN = self.resolveGroupDN(groupName)
             if not groupDN:
                 # Can't find group, no point in continuing.
                 self.printDebug("Cannot locate group '{0}' in order to search for member '{1}' within it. Returning False.".format(groupName,objectName),index.DEBUG_LEVEL_MAJOR,spaces=depth)
-                if depth == 0:
-                    self.searchedGroups = []
                 return False
         
         if not objectNameIsDN and self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
@@ -412,23 +444,19 @@ class DirectoryTools:
             searchName = self.resolveObjectDN(objectClass,objectIdentifier,objectName,objectBase)
             if not searchName:    
                 # If this DN search does not yield any object, there's no point in continuing with our search.
-                if depth == 0:
-                    self.searchedGroups = []
                 return False
         elif objectNameIsDN and not self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
             # If we are using a system which indexes its group members as UIDs, we must resolve our given DN to a UID.
             objectName  = self.resolveObjectUID(objectName,objectIdentifier)
             if not searchName:
                 # Cannot find a UID. No point in continuing.
-                if depth == 0:
-                    self.searchedGroups = []
                 return False
         else:
             # Not a DN, so no need to resolve.
             searchName = objectName
         
         members = self.getMultiAttribute(groupDN,self.getProperty(index.MEMBER_ATTRIBUTE))
-
+        
         # This list will hold group definitions until we are done looking through non-group objects.
         nestedGroupList = []
         
@@ -438,8 +466,6 @@ class DirectoryTools:
             if searchName in members:
                 # If we are using a POSIX group, we can trust that the item is of the class we want.
                 # If members are DNs, then we have resolved the UID to an existing object.
-                if depth == 0:
-                    self.searchedGroups = []
                 self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
                 return True
         
@@ -450,11 +476,9 @@ class DirectoryTools:
             # We cannot count on the objects in this group to only be users.
             for member in members:
                 # Cycle through group results.
-                    
+                
                 if member == searchName:
                     self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
-                    if depth == 0:
-                        self.searchedGroups = []
                     return True
                 elif self.getProperty(index.NESTED_GROUPS) and self.isObjectGroup(member):
                     # We have stated that we want to search through nested groups.
@@ -471,12 +495,8 @@ class DirectoryTools:
         
             # We have completed cycling through the memberList variable for users, and have not found a matching user.
             for nestedGroup in nestedGroupList:
-                if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1)):
-                    if depth == 0:
-                        self.searchedGroups = []
+                if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1),cacheId=cacheId):
                     return True
-        if depth == 0:
-            self.searchedGroups = []
         # Fall back to false if we have not gotten a True response back by this point.
         return False
 
@@ -487,28 +507,30 @@ class DirectoryTools:
     @param objectClass the class value that we want to check for.
     '''
     def isObjectOfClass(self,objectDN,objectClass):
-        self.printDebug("Checking whether the object at '{0}' is of class '{1}'".format(objectDN,objectClass),DEBUG_LEVEL_MAJOR)
-        try:
-            # Attempt to find the object in the cache.
-            if objectDN in self.classCache[objectClass]:
-                self.printDebug("Verified object using cache.",DEBUG_LEVEL_MAJOR)
+        
+        cacheCategory='classCache'
+        cacheId=self.initCache(cacheCategory,objectClass)
+        
+        self.printDebug("Checking whether the object at '{0}' is of class '{1}'".format(objectDN,cacheId),DEBUG_LEVEL_MAJOR)
+        
+        # Attempt to find the object in the cache.
+        if objectDN in self.cache[cacheCategory][cacheId]:
+            if self.cache[cacheCategory][cacheId][objectDN]:
+                self.printDebug("Verified object as being of class '{0}' using cache.".format(cacheId),DEBUG_LEVEL_MAJOR)
                 return True
-            elif objectDN in self.notOfClassCache[objectClass]:
-                self.printDebug("Cache reports that we could not verify object.",DEBUG_LEVEL_MAJOR)
+            else:
+                self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),DEBUG_LEVEL_MAJOR)
                 return False
-        except:
-            pass
+            
         classes = self.getMultiAttribute(objectDN,'objectClass')
         if objectClass in classes:
-            try:
-                self.classCache[objectClass]
-            except:
-                self.classCache[objectClass] = []
-            self.classCache[objectClass].append(objectDN)
-            self.printDebug("Verified object.",DEBUG_LEVEL_MAJOR)
+            self.cache[cacheCategory][cacheId][objectDN] = True
+            self.printDebug("Verified object as being of class '{0}' using cache.".format(cacheId),DEBUG_LEVEL_MAJOR)
             return True
-        self.printDebug("Could not verify object.",DEBUG_LEVEL_MAJOR)
-        return False
+        else:
+            self.cache[cacheCategory][cacheId][objectDN] = False
+            self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),DEBUG_LEVEL_MAJOR)
+            return False
 
     '''
     Confirms that the specified object is a user. Alias of isObjectOfClass()
@@ -594,27 +616,33 @@ class DirectoryTools:
     @return a tuple. First value is a boolean indicator of success/failure. If the first value is true, then the second value will be the group's distinguished name.
     '''    
     def resolveGroupDN(self,groupName,uidAttribute=False):
+        
+        cacheCategory='resolvedGroups'
+        cacheId = self.initCache(cacheCategory,False)
+        
         if not uidAttribute:
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
-        if groupName in self.resolvedGroups:
-            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(groupName,self.resolvedGroupValues[groupName]),DEBUG_LEVEL_MAJOR)
-            return self.resolvedGroupValues[groupName]
+        if groupName in self.cache[cacheCategory][cacheId]:
+            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(groupName,self.cache[cacheCategory][cacheId][groupName]),DEBUG_LEVEL_MAJOR)
+            return self.cache[cacheCategory][cacheId][groupName]
         returnValue = self.resolveObjectDN(self.getProperty(index.GROUP_CLASS),uidAttribute,groupName,self.getGroupBaseDN())
     
         # Add to the list of resolved groups.
-        self.resolvedGroups.append(groupName)
-        self.resolvedGroupValues[groupName] = returnValue
+        self.cache[cacheCategory][cacheId][groupName] = returnValue
         
-        if returnValue not in self.resolvedGroups:
+        if returnValue not in self.cache[cacheCategory][cacheId]:
             # May as well cache the reverse of this lookup as well.
-            self.resolvedGroups.append(returnValue)
-            self.resolvedGroupValues[returnValue] = groupName
+            self.cache[cacheCategory][cacheId][returnValue] = groupName
         return returnValue
         
     ''' 
     Resolve a group's name from a given DN.
     '''
     def resolveGroupUID(self,groupDN,uidAttribute=False):
+        
+        cacheCategory='resolvedGroups'
+        cacheId = self.initCache(cacheCategory,False)
+        
         if not uidAttribute:
             # No override provided.
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
@@ -623,9 +651,9 @@ class DirectoryTools:
         self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,groupDN,query), DEBUG_LEVEL_MAJOR)
 
         # Checking cached values.
-        if groupDN in self.resolvedGroupValues:
-            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(groupDN,self.resolvedGroupValues[groupDN]),DEBUG_LEVEL_MAJOR)
-            return self.resolvedGroupValues[groupDN]
+        if groupDN in self.cache[cacheCategory][cacheId]: 
+            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(groupDN,self.cache[cacheCategory][cacheId][groupDN]),DEBUG_LEVEL_MAJOR)
+            return self.cache[cacheCategory][cacheId][groupDN]
         
         result = self.query(query,[uidAttribute],groupDN)
         
@@ -638,18 +666,15 @@ class DirectoryTools:
                 # If the UID value is incorrect, the exception will happen here.
                 returnValue = attributes[uidAttribute][0]
                 
-                self.resolvedUsers.append(groupDN)
-                self.resolvedUserValues[groupDN] = returnValue
-                if returnValue not in self.resolvedUsers:
+                self.cache[cacheCategory][cacheId][groupDN] = returnValue
+                if returnValue not in self.cache[cacheCategory][cacheId]:
                     # May as well cache the reverse of this lookup as well.
-                    self.resolvedUsers.append(returnValue)
-                    self.resolvedUserValues[returnValue] = groupDN
+                    self.cache[cacheCategory][cacheId][returnValue] = groupDN
                 return returnValue
         except:
-            # Unable to find the group ID.
+            # Unable to find the group ID. Cache this failure.
             
-            self.resolvedGroups.append(groupDN)
-            self.resolvedGroupValues[groupDN] = None
+            self.cache[cacheCategory][cacheId][groupDN] = None
             return False
         
     '''
@@ -695,26 +720,32 @@ class DirectoryTools:
     @return a tuple drawn from resolveObjectDN. First value is a boolean indicator of success/failure. If the first value is true, then the second value will be the user's distinguished name.
     '''
     def resolveUserDN(self,userName,uidAttribute=False):
+        
+        cacheCategory='resolvedUsers'
+        cacheId = self.initCache(cacheCategory,False)
+        
         if not uidAttribute:
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
-        if userName in self.resolvedUsers:
-            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(userName,self.resolvedUserValues[userName]),DEBUG_LEVEL_MAJOR)
-            return self.resolvedUserValues[userName]
+        if userName in self.cache[cacheCategory][cacheId]:
+            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(userName,self.cache[cacheCategory][cacheId][userName]),DEBUG_LEVEL_MAJOR)
+            return self.cache[cacheCategory][cacheId][userName]
         returnValue = self.resolveObjectDN(self.getProperty(index.USER_CLASS),uidAttribute,userName,self.getUserBaseDN())
         
-        self.resolvedUsers.append(userName)
-        self.resolvedUserValues[userName] = returnValue
+        self.cache[cacheCategory][cacheId][userName] = returnValue
         
-        if returnValue not in self.resolvedUsers:
+        if returnValue not in self.cache[cacheCategory][cacheId]:
             # May as well cache the reverse of this lookup as well.
-            self.resolvedUsers.append(returnValue)
-            self.resolvedUserValues[returnValue] = userName
+            self.cache[cacheCategory][cacheId][returnValue] = userName
         return returnValue
 
     ''' 
     Resolve a user's login name from a given DN.
     '''
     def resolveUserUID(self,userDN,uidAttribute=False):
+        
+        cacheCategory='resolvedUsers'
+        cacheId = self.initCache(cacheCategory,False)
+        
         if not uidAttribute:
             # No override provided.
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
@@ -723,9 +754,9 @@ class DirectoryTools:
         self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,userDN,query), DEBUG_LEVEL_MAJOR)
 
         # Checking cached values.
-        if userDN in self.resolvedUsers:
-            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(userDN,self.resolvedUserValues[userDN]),DEBUG_LEVEL_MAJOR)
-            return self.resolvedUserValues[userDN]
+        if userDN in self.cache[cacheCategory][cacheId]:
+            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(userDN,self.cache[cacheCategory][cacheId][userDN]),DEBUG_LEVEL_MAJOR)
+            return self.cache[cacheCategory][cacheId][userDN]
         
         result = self.query(query,[uidAttribute],userDN)
         
@@ -738,17 +769,14 @@ class DirectoryTools:
                 # If the UID value is incorrect, the exception will happen here.
                 returnValue = attributes[uidAttribute][0]
                 
-                self.resolvedUsers.append(userDN)
-                self.resolvedUserValues[userDN] = returnValue
+                self.cache[cacheCategory][cacheId][userDN] = returnValue
                 # May as well cache the reverse of this lookup as well.
-                if returnValue not in self.resolvedUsers:
-                    self.resolvedUsers.append(returnValue)
-                    self.resolvedUserValues[returnValue] = userDN
+                if returnValue not in self.cache[cacheCategory][cacheId]:
+                    self.cache[cacheCategory][cacheId][returnValue] = userDN
                 return returnValue
         except:
             # Unable to find the user ID.
-            self.resolvedUsers.append(userDN)
-            self.resolvedUserValues[userDN] = None
+            self.cache[cacheCategory][cacheId][userDN] = None
             traceback.print_exc(file=sys.stdout)
             return None
     '''

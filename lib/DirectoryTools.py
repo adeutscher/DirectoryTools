@@ -14,8 +14,11 @@ DEBUG_LEVEL_MAJOR = 2
 DEBUG_LEVEL_EXTREME = 3
 
 class DirectoryTools:
-
-    # Default properties.
+    """
+    Class containing methods for queryin an LDAP server.
+    """
+    
+    ## Default properties.
     properties = {
         index.DEBUG_LEVEL:0,
         index.SERVER_ADDRESS:'',
@@ -33,16 +36,30 @@ class DirectoryTools:
         index.PROXY_IS_ANONYMOUS:False,
     }
     
+    ## No debugging.
     DEBUG_LEVEL_NONE = 0
+    ## Debug level 1
     DEBUG_LEVEL_MINOR = 1
+    ## Debug level 2
     DEBUG_LEVEL_MAJOR = 2
+    ## Debug level 3
     DEBUG_LEVEL_EXTREME = 3
     
+    ## Handle used to search the directory server.
     proxyHandle = False
     
-    searchedGroups = []
+    ## Cache for reducing the number of queries that need to be run, especially common ones like resolving a DN.
+    cache = {}
+    
 
     def __init__(self,properties=False,template='openldap'):
+        '''
+        Initializes the DirectoryTools object.
+        
+        Args:
+            properties: Dictionary of properties. Can be updated through setProperties or updateProperties.
+            template: String describing a template schema that defines common properties given LDAP server implementation. If the schema is not found, then the program will exit.
+        '''
         
         if template:
             try: 
@@ -56,12 +73,19 @@ class DirectoryTools:
             except:
                 print "Error initializing DirectoryTools object, properties argument is expected to be a dictionary. Exiting..."
                 exit(1)
-    '''
-    Attempts to do a simple bind to see if the user entered their password correctly.
     
-    @return True/False    
-    '''
     def authenticate(self,userName,password,userNameIsDN=False):
+        '''
+        Attempts to do a simple bind to see if the user entered their password correctly.
+        
+        Args:
+            userName: User's login string. Can be either a login name or a distinguished name.
+            password: User's password.
+            userNameIsDN: True if the provided username is already a DN. If set to False, the method will attempt to resolve the DN first.
+            
+        Returns:
+            True if the user successfully authenticates, false if there is an error.
+        '''
         
         self.printDebug("Attempting to authenticate user '{0}'.".format(userName), DEBUG_LEVEL_MINOR)
 
@@ -91,6 +115,16 @@ class DirectoryTools:
             return False
             
     def flushCaches(self,category=False,cacheId=False):
+        '''
+        Clears out caches.
+        
+        Args:
+            category: The category of cache to clear.
+            cacheId: Instance within cache to clear.
+            
+        Returns:
+            None
+        '''
         try:
             if type(category) is str and type(cacheId) is str:
                 # A specific cache ID was requested in a category.
@@ -102,28 +136,41 @@ class DirectoryTools:
                     del self.cache[category]
             else:
                 # No category was specified, flushing all caches by re-declaring the cache.
+                
+                ## Cache for reducing the number of queries that need to be run, especially common ones like resolving a DN.
                 self.cache = {}
         except:
             pass
-
-    '''
-    Combine the relative group base DN with the base DN.
     
-    @return combination relative group base DN with the base DN.
-    '''
     def getGroupBaseDN(self):
+        '''
+        Combine the relative group base DN with the base DN.
+        
+        Returns:
+            A string composed of a combination of the relative group base DN provided by the GROUP_RDN property and the base DN provided by the BASE_DN property.
+        '''
         return "{0}{1}".format(self.getProperty(index.GROUP_RDN),self.getProperty(index.BASE_DN))
           
-    '''
-    List all members of a group.
-    
-    @return a list of all user accounts. Whether they are distinguished names or not depends on format of the LDAP server's group member property.
-    '''    
-    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0,cacheId=True):
 
+    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0,cacheId=True):
+        '''
+        List all members of a group.
+        
+        Args:
+            groupName: A string specifying the name of the group.
+            groupNameIsDN: True if the provided group name is already a DN.
+            returnMembersAsDN: If set to True, specifies that we want our results to be formatted as a list of distinguished names. If set to False, specifies that we want our results to be formatted as a list of login names.
+            objectClassFilter: String specifing the class to filter by. If the LDAP server stores group members as distinguished names, only those who are of the specified class will be shown. If set to None (default), group members will not be trusted to be of the intended class. LDAP servers that do not store members as distinguished names are trusted to be of the intended type.
+            uidAttribute: Attribute containing the user's user login Id. To be used if the user wants their return list to be distinguished names when the server indexes group members by UID.
+            depth: A count of how many times the function has been called. To be used in recursive calls.
+            cacheId: ID of the cache that stores a list of searched groups.
+        
+        Returns:
+            A list of all user accounts. Whether they are distinguished names or not depends on format of the LDAP server's group member property.
+        '''
+        
         cacheCategory = 'searchedGroups'
         cacheId = self.initCache(cacheCategory,cacheId)
-        
         
         if not groupNameIsDN:
             # We want to confirm that the group exists and get its Distinguished Name.
@@ -159,10 +206,9 @@ class DirectoryTools:
         for member in members:
                 
             if self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
-                '''
-                Distinguished names may be nested groups.
-                We need to double check whether or not this DN is indeed a group.
-                '''
+                # Distinguished names may be nested groups.
+                # We need to double check whether or not this DN is indeed a group.
+                
                 
                 if not objectClassFilter:
                     self.printDebug("Adding object '{0}' to list (No Filter).".format(member), DEBUG_LEVEL_MAJOR)
@@ -173,12 +219,10 @@ class DirectoryTools:
                     memberList.append(member)
                 
                 if self.getProperty(index.NESTED_GROUPS) and not (depth >= self.getProperty(index.MAX_DEPTH)) and self.isObjectGroup(member):
-                    '''
-                    If this section is being executed we have confirmed three things: 
-                    * We want to search in nested groups.
-                    * We have not yet exceeded the maximum search depth.
-                    * The object is actually a group (kind of important!).
-                    '''
+                    # If this section is being executed we have confirmed three things: 
+                    # * We want to search in nested groups.
+                    # * We have not yet exceeded the maximum search depth.
+                    # * The object is actually a group (kind of important!).
                     
                     self.printDebug("Searching within nested group '{0}'".format(member), DEBUG_LEVEL_MAJOR)
                     memberList.extend(
@@ -221,10 +265,14 @@ class DirectoryTools:
             # The list we are currently working on is already in the desired format.
             return list(set(memberList))
 
-    '''
-    Attempts to establish a basic connection to the LDAP server.
-    '''
+    
     def getHandle(self):
+        '''
+        Attempts to establish a basic connection to the LDAP server.
+        
+        Returns:
+            An initialized LDAP connection. Binding to the server is done in separate methods.
+        '''
         
         protocol = ('ldap','ldaps')[self.getProperty(index.USE_SSL)]
         
@@ -242,9 +290,23 @@ class DirectoryTools:
         return connection
 
     def getMultiAttribute(self,dn,attribute):
+        '''
+        Get a single multi-valued attribute from the server. Alias for getObjectAttribute.
+        
+        Args:
+            dn: Distinguished name to get the attribute from.
+            attribute: Attribute to search for.
+        '''
         return self.getObjectAttribute(dn=dn,attribute=attribute)
 
     def getMultiAttributes(self,dn,attributes):
+        '''
+        Get multiple attributes from the server for the specified object.
+        
+        Args:
+            dn: Distinguished name to get attributes from.
+            attributes: List of attributes to search for.
+        '''
         results = self.query('objectClass=*',attributes,dn)
         try:
             dn,attributes = results[0]
@@ -254,15 +316,15 @@ class DirectoryTools:
             # Return an empty dictionary.
             return {}
 
-    '''
-    Simple query to get all values of an attribute for a single object.
-    
-    @param dn the Distinguished Name that we are searching for.
-    @param attribute is the attribute we want to fetch.
-    @param returnSingle skip ahead and return a single attribute.
-    '''
     def getObjectAttribute(self,dn,attribute,returnSingle=False):
+        '''
+        Simple query to get all values of an attribute for a single object.
         
+        Args:
+            dn: The distinguished name of the object that we are getting attributes from.
+            attribute: the attribute we want to fetch.
+            returnSingle: If True, the method will only return one value of the property as a string. If the attribute can be a multi-valued attribute, only the first result for that attribute will be shown.
+        '''
         results = self.query('objectClass=*',[attribute],dn)
 
         try:
@@ -278,14 +340,19 @@ class DirectoryTools:
             else:
                 return []
 
-    ''' 
-    Gets a property value.
-    
-    If a key is not found, then the script will exit with an error.
-    
-    @return the value of a key out of either the properties or defaults dictionary.
-    '''
     def getProperty(self,key,exitOnFail=True,printDebugMessage=True):
+        ''' 
+        Gets a property value.
+        
+        Args:
+            key: Name of the property to retrieve. Recommended to go through the values in DirectoryToolsIndexes.
+            exitOnFail: If set to True, the script will exit with an error code if the key is not found in our properties.
+            printDebugMessage: Since printDebug relies on this method, this is our current solution for avoiding an endless loop. Needs improvement.
+            
+        Returns:
+            The value of a key out of either the properties or defaults dictionary.
+        '''
+        
         try:
             if printDebugMessage:
                 self.printDebug("Fetching property '{0}'".format(key),self.DEBUG_LEVEL_MINOR)
@@ -298,13 +365,18 @@ class DirectoryTools:
                 self.printDebug("Property '{0}' not found.".format(key),self.DEBUG_LEVEL_MINOR)
                 
             return None
-    
-    '''
-    Get a connection handle for the lookup proxy.
-    
-    @return an LDAP connection handle that has been bound to by the lookup user.
-    '''
+
     def getProxyHandle(self):
+        '''
+        Get a connection handle for the lookup proxy.
+        
+        If the PROXY_IS_ANONYMOUS property is set to False, the method will attempt to bind to the server using the values of the PROXY_USER and PROXY_PASSWORD properties.
+        
+        If the PROXY_IS_ANONYMOUS property is set to True, then the method will skip attempting to bind.
+                
+        Returns:
+            An LDAP connection handle to be used by the object to retrieve information from the LDAP server.
+        '''
         
         if not self.proxyHandle:
             # Get a handle for our server, if one is not already present.
@@ -333,25 +405,52 @@ class DirectoryTools:
         return self.proxyHandle
 
     def getSingleAttribute(self,dn,attribute):
+        '''
+        Retrieve a single attribute from a server. Mostly an alias of getObjectAttribute.
+        
+        Args:
+            dn: The distinguished name to retreive the attribute from.
+            attribute: The attribute to search for.
+            
+        Returns:
+            String value of an attribute.
+        '''
         return self.getObjectAttribute(dn=dn,attribute=attribute,returnSingle=True)
 
-    '''
-    Combine the relative user base DN with the base DN.
-    
-    @return combination relative user base DN with the base DN.
-    '''
     def getUserBaseDN(self):
+        '''
+        Combine the relative group base DN with the base DN.
+        
+        Returns:
+            A string composed of a combination of the relative user base DN (indexes.USER_RDN) and the base DN (indexes.BASE_DN)
+        '''
         return "{0}{1}".format(self.getProperty(index.USER_RDN),self.getProperty(index.BASE_DN))
 
-    '''
-    Alias of getGroupMembers(), pre-configured for retrieving user objects.
-    
-    '''
     def getUsersInGroup(self,groupName,returnMembersAsDN=False):
+        '''
+        Alias of getGroupMembers(), pre-configured for retrieving user objects.
+        
+        Args:
+            groupName: Name of the group to search in.
+            returnMembersAsDN: If True, the list that is returned will be a list of distinguished names. If False, the list that is returned will be a list of user UIDs.
+            
+        Returns:
+            A list of users, formatted as either UIDs or distinguished names.
+        '''
         return self.getGroupMembers(groupName=groupName,returnMembersAsDN=returnMembersAsDN,objectClassFilter=self.getProperty(index.USER_CLASS),uidAttribute=self.getProperty(index.USER_UID_ATTRIBUTE))
 
 
     def initCache(self,category='general',cacheId=True):
+        '''
+        Ensures that a cache is initialized. A specific cache will be a dictionary indexed by cacheId, which is nested in a cache for categories.
+        
+        Args:
+            category: The general category of the cache. For example, 'searchedGroups', 'resolvedDNs'
+            cacheId: If set to True, the method will generate a new cache ID using a UNIX timestamp and the current microseconds. If a string is provided, we will ensure use the string as our cacheId value.
+            
+        Returns:
+            A string cacheId being used.
+        '''
         defaultCacheId = 'general'
         
         # Make sure that the cache object is initialized.   
@@ -389,28 +488,39 @@ class DirectoryTools:
         # Return the cache id that we are using. A recursive function must use the same cache Id.
         return cacheId
 
-    '''
-    Confirms that the specified object is a group.
     
-    @param groupDN the DN of the object that we are confirming as a group.
-    '''
     def isObjectGroup(self,groupDN):
+        '''
+        Confirms that the specified object is a group by virtue of having an objectClass value of the GROUP_CLASS property. Pre-configured alias of isObjectOfClass().
+        
+        Args:
+            groupDN: The DN of the object that we are confirming as a group.
+            
+        Returns:
+            True if the object is a member of a group, false otherwise.
+        '''
         return self.isObjectOfClass(objectDN=groupDN,objectClass=self.getProperty(index.GROUP_CLASS))
 
-    '''
-    Determines whether or not a user is in a group.
-    
-    The advantage to using this over getGroupUsers is that the method will short circuit as soon as it finds a matching user.
-    
-    @param objectName a user identifier.
-    @param groupName a group identifier.
-    @param objectNameIsDN boolean flag. Set to True if the objectName argument is a Distinguished Name, False for a UID.
-    @param groupNameIsDN boolean flag. Set to True if the groupName argument is a Distinguished Name, False for a UID.
-    @param objectIdentifier name of UID attribute for the object we want to search for.
-    @param objectClass the class of the object we're searching for.
-    @param objectBase the base DN to search for this object in.
-    '''
     def isObjectInGroup(self,objectName,groupName,objectNameIsDN=False,groupNameIsDN=False,objectIdentifier=False,objectClass=False,objectBase=False,depth=0,cacheId=True):
+        '''
+        Determines whether or not a user is in a group. This is a will recursively call itself until it exceeds the value of the MAX_DEPTH property.
+        
+        The advantage to using this over checking against the results of getGroupUsers is that the method will stop and return a result as soon as it finds a matching user.
+        
+        Args:
+            objectName: Name of the object to search for.
+            groupName: Name of the group.
+            objectNameIsDN: Set to True if the objectName argument is a distinguished name, False for a UID.
+            groupNameIsDN: Set to True if the groupName argument is a distinguished name, False for a UID.
+            objectIdentifier: The name of UID attribute for the object we want to search for.
+            objectClass: The class of the object we're searching for.
+            objectBase: The distinguished name of the object that we are searching for.
+            depth: Describes which iteration of the method we are currently working in. If the depth exceeds the MAX_DEPTH property, we will automatically return False.
+            cacheId: Cache identifier for this chain of calls.
+            
+        Returns:
+            True if the object is a member of a group, False otherwise.
+        '''
         
         cacheCategory='searchedGroups'
         cacheId = self.initCache(cacheCategory,cacheId)
@@ -500,13 +610,17 @@ class DirectoryTools:
         # Fall back to false if we have not gotten a True response back by this point.
         return False
 
-    '''
-    Check to see if an object has a certain objectClass value.
-    
-    @param objectDN the distinguished name of the object that we want to verify.
-    @param objectClass the class value that we want to check for.
-    '''
     def isObjectOfClass(self,objectDN,objectClass):
+        '''
+        Check to see if an object has a certain objectClass value.
+        
+        Args:
+            objectDN: the distinguished name of the object that we want to verify.
+            objectClass: the class value that we want to check for.
+            
+        Returns:
+            True if the object is of the specified class, False if it is not.
+        '''
         
         cacheCategory='classCache'
         cacheId=self.initCache(cacheCategory,objectClass)
@@ -532,56 +646,83 @@ class DirectoryTools:
             self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),DEBUG_LEVEL_MAJOR)
             return False
 
-    '''
-    Confirms that the specified object is a user. Alias of isObjectOfClass()
-    
-    @param userDN the DN of the object that we are confirming as a user.
-    '''      
     def isObjectUser(self,userDN):
+        '''
+        Confirms that the specified object is a group by virtue of having an objectClass value of the USER_CLASS property. Pre-configured alias of isObjectOfClass().
+        
+        Args:
+            userDN: The DN of the object that we are confirming as a user.
+            
+        Returns:
+            True if the object is a member of a user, false otherwise.
+        '''
         return self.isObjectOfClass(objectDN=userDN,objectClass=self.getProperty(index.USER_CLASS))
 
     def isUserInGroup(self,userName,groupName,userNameIsDN=False,groupNameIsDN=False):
+        '''
+        Checks to see if a user is in the specified group. Pre-configured alias of isObjectInGroup()
+        
+        Args:
+            userName: The name of the user to be checked.
+            groupName: The name of the group that we are checking in.
+            userNameIsDN: True if the value of userName is a distinguished name. If False, it is a UID.
+            groupNameIsDN: True if the value of groupName is a distinguished name. If False, it is a UID.
+            
+        Returns:
+            True if the user is in the group, False if they are not.
+            
+        '''
         return self.isObjectInGroup(objectName=userName,groupName=groupName,objectNameIsDN=userNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=self.getProperty(index.USER_UID_ATTRIBUTE),objectClass=self.getProperty(index.USER_CLASS),objectBase=self.getUserBaseDN())
     
-    '''
-    Pad out a message with spaces.
-    
-    @param spaceCount the number of spaces to pad by.
-    '''
     def makeSpaces(self,spaceCount=0):
+        '''
+        Pad out a message with spaces.
+        
+        Args:
+            spaceCount: The number of spaces to pad by.
+            
+        Returns:
+            A string of spaces. Length equals spaceConut.
+        '''
+    
         returnValue = ''
         i = 0
         while i < spaceCount:
             returnValue = "{0}{1}".format(returnValue,' ')
             i = i + 1 
         return returnValue
-    
-    '''
-    Prints a debug message.
-    Message will only be printed if the debug level is equal to or greater than the clearance level.
-    
-    @param message message to print.
-    @param secrecyLevel authorization required to print.
-    
-    @return True if the message was transmitted. False otherwise.
-    '''
+
     def printDebug(self,message,secrecyLevel=100,spaces=0):
+        '''
+        Prints a debug message.
+        
+        The message will only be printed if the debug level is equal to or greater than the clearance level.
+        
+        Args:
+            message: The message to print.
+            secrecyLevel: The authorization required to print. The DEBUG_LEVEL property must be equal to or greater than this secrecy level to print the message.
+            spaces: The number of spaces to indent the debug string by.
+            
+        Returns:
+            True if the message was sent, False otherwise.
+        '''
         if self.getProperty(index.DEBUG_LEVEL,printDebugMessage=False) >= int(secrecyLevel):
             print "{0}DEBUG({1}): {2}".format(self.makeSpaces(spaces),secrecyLevel,message)
             return True
         return False
     
-    '''
-    Executes an LDAP query.
-    
-    @param self parent object.
-    @param query the query string.
-    @param attributes a list of attributes that we wish to fetch.
-    @param base the search base.
-    
-    @return the list of results. References are omitted.
-    '''
     def query(self,query='',attributes=None,base=None):
+        '''
+        Executes an LDAP query.
+        
+        Args:
+            query: the query string.
+            attributes: A list of attributes that we wish to fetch.
+            base: The distinguished name to base our search in.
+            
+        Returns:
+            The list of results. References are omitted.
+        '''
         handle = self.getProxyHandle()
         
         if not base:
@@ -601,21 +742,25 @@ class DirectoryTools:
             # Return the empty list.
             return returnList
         for result in results:
+            # Some LDAP servers include reference information in place of the attributes that we want to search for.
+            # If this is the case, the distinguished name of the 'row' will be set to None.
             dn,attrs = result
             if dn:
                 returnList.append(result)
         return returnList
     
-    '''
-    Resolve a group DN based on the given index.
-    
-    @param self the parent object.
-    @param groupName the group name we are trying to resolve.
-    @param uidAttribute the attribute that groupName can be found in.
-    
-    @return a tuple. First value is a boolean indicator of success/failure. If the first value is true, then the second value will be the group's distinguished name.
-    '''    
+
     def resolveGroupDN(self,groupName,uidAttribute=False):
+        '''
+        Resolve a group DN based on the given index.
+        
+        Args:
+            groupName: The group name we are trying to resolve.
+            uidAttribute: The attribute that groupName can be found in.
+        
+        Returns:
+            A string with the group's distinguished name if they have been resolved, False otherwise.
+        '''  
         
         cacheCategory='resolvedGroups'
         cacheId = self.initCache(cacheCategory,False)
@@ -635,10 +780,18 @@ class DirectoryTools:
             self.cache[cacheCategory][cacheId][returnValue] = groupName
         return returnValue
         
-    ''' 
-    Resolve a group's name from a given DN.
-    '''
     def resolveGroupUID(self,groupDN,uidAttribute=False):
+        ''' 
+        Resolve a group's name from a given DN.
+        
+        Args:
+            groupDN: The distinguished name of the group that we want to find the UID attribute for.
+            uidAttribute: Attribute that we are searching for. Defaults to the value of GROUP_UID_ATTRIBUTE.
+            
+        Returns:
+            If the UID was successfully resolved, returns the string.
+            If the UID was not successfully resolved, return False.
+        '''
         
         cacheCategory='resolvedGroups'
         cacheId = self.initCache(cacheCategory,False)
@@ -676,19 +829,19 @@ class DirectoryTools:
             
             self.cache[cacheCategory][cacheId][groupDN] = None
             return False
-        
-    '''
-    Method to resolve an instance of a class.
     
-    @param self the parent object.
-    @param class the objectClass that we want to resolve for.
-    @param objectAttribute the attribute that objectName can be found in.
-    @param objectName the group name we are trying to resolve.
-    @param base the search base.
-    
-    @return a tuple drawn from resolveObjectDN. First value is a boolean indicator of success/failure. If the first value is true, then the second value will be the object's distinguished name.
-    '''
     def resolveObjectDN(self,objectClass,indexAttribute,objectName,base=None):
+        '''
+        Method to resolve an instance of a class.
+        
+        class: the objectClass that we want to resolve for.
+        objectAttribute: the attribute that objectName can be found in.
+        objectName: the group name we are trying to resolve.
+        base: the search base.
+        
+        Returns:
+            A string with the object's distinguished name if they have been resolved, False otherwise.
+        '''
         if not base:
             base=self.getProperty(index.BASE_DN)
         query = '(&(objectClass={0})({1}={2}))'.format(objectClass,indexAttribute,objectName)
@@ -700,26 +853,28 @@ class DirectoryTools:
             if dn:
                 return dn
             return False
-        
-    '''
-    Get the UID of an object. Alias for getSingleAttribute()
     
-    @param objectDN Distinguished Name to search in.
-    @param objectIdentifier the single-valued attribute representing an object's unique identifier.
-    '''
     def resolveObjectUID(self,objectDN,objectIdentifier):
+        '''
+        Get the UID of an object. A pre-configured alias of getSingleAttribute()
+        
+        Args:
+            objectDN: Distinguished Name to search in.
+            objectIdentifier: the single-valued attribute representing an object's unique identifier.
+        '''
         return self.getSingleAttribute(dn=objectDN,attribute=objectIdentifier)
-
-    '''
-    Resolve a user DN based on the given index.
     
-    @param self the parent object.
-    @param userName the username we are trying to resolve.
-    @param uidAttribute the attribute that the userName can be found in.
-    
-    @return a tuple drawn from resolveObjectDN. First value is a boolean indicator of success/failure. If the first value is true, then the second value will be the user's distinguished name.
-    '''
     def resolveUserDN(self,userName,uidAttribute=False):
+        '''
+        Resolve a user DN based on the given index.
+        
+        Args:
+            userName: The username we are trying to resolve.
+            uidAttribute: The attribute that the userName can be found in.
+        
+        Returns:
+            A string with the user's distinguished name if they have been resolved, False otherwise.
+        '''
         
         cacheCategory='resolvedUsers'
         cacheId = self.initCache(cacheCategory,False)
@@ -738,11 +893,18 @@ class DirectoryTools:
             self.cache[cacheCategory][cacheId][returnValue] = userName
         return returnValue
 
-    ''' 
-    Resolve a user's login name from a given DN.
-    '''
     def resolveUserUID(self,userDN,uidAttribute=False):
+        ''' 
+        Resolve a user's name from a given DN.
         
+        Args:
+            userDN: The distinguished name of the group that we want to find the UID attribute for.
+            uidAttribute: Attribute that we are searching for. Defaults to the value of USER_UID_ATTRIBUTE.
+            
+        Returns:
+            If the UID was successfully resolved, returns the string.
+            If the UID was not successfully resolved, return False.
+        '''
         cacheCategory='resolvedUsers'
         cacheId = self.initCache(cacheCategory,False)
         
@@ -779,17 +941,30 @@ class DirectoryTools:
             self.cache[cacheCategory][cacheId][userDN] = None
             traceback.print_exc(file=sys.stdout)
             return None
-    '''
-    Set a single property.
-    '''
+    
     def setProperty(self,key,value):
+        '''
+        Set a single property.
+        
+        Args:
+            key: The name of the property to update.
+            value: New value to insert into key.
+            
+        Returns:
+            None
+        '''
         self.printDebug("Setting the '{0}' property to the value of '{1}' (Old value: '{2}')".format(key,value,self.getProperty(key)),self.DEBUG_LEVEL_MINOR)
         self.properties[key] = value
         
-    '''
-    Set multiple properties.
     
-    @newProperties a dictionary of property values.
-    '''
     def updateProperties(self,newProperties):
+        '''
+        Set multiple properties.
+        
+        Args:
+            newProperties: a dictionary of property values.
+            
+        Returns:
+            None
+        '''
         self.properties.update(newProperties)

@@ -32,11 +32,18 @@ Groups:
 '''
 
 class DirectoryToolsActiveDirectoryTestLDAP(common,unittest.TestCase):
+    '''
+    Unit tests for testing against port 389 of an Active Directory server (Windows Server 2008).
+    '''
     
     def setUp(self):
+        '''
+        Prepare DirectoryTools for testing against port 389 of an Active Directory server (Windows Server 2008).
+        '''
         
         print '\nSetting up for: {0}'.format(self.id())
         
+        ## Properties for my test domain.
         properties = {
             indexes.BASE_DN:'dc=sandbox,dc=lan',
             indexes.SERVER_ADDRESS:'sandbox.lan',
@@ -47,28 +54,41 @@ class DirectoryToolsActiveDirectoryTestLDAP(common,unittest.TestCase):
             indexes.DEBUG_LEVEL:0
         }
 
+        ## DirectoryTools object to test with.
         self.auth = DirectoryTools.DirectoryTools(properties,'ad')
     
         # Defining group values.
+        
+        ## Name of the administrator group.
         self.adminGroup = 'Local Administrators'
+        ## Name of the employee group.
         self.employeeGroup = 'Employees'
+        ## Name of the guest group.
         self.guestGroup = 'Local Guests'
+        ## Name of the service access group.
         self.serviceGroup = 'Wiki Access'
+        
         # Counts of the intended number of direct/indirect members in a group used in a unit test.
+        ## Intended number of direct users.
         self.serviceGroupDirectUserMemberCount = 1
+        ## Intended number of direct and indirect users.
         self.serviceGroupNestedUserMemberCount = 3
     
+        ## Name of user A.
         self.userA = 'alan'
+        ## Name of user B.
         self.userB = 'bob'
+        ## Name of user C.
         self.userC = 'carl'
+        ## Name of user D.
         self.userD = 'dave'
         
-        # All users have the same password in my test environment.
+        ## User password. All users have the same password in my test environment.
         self.userPassword = 'MyUserPassword1!'
         
-        # Target attribute for the getMultiAttribute test.
+        ## Target attribute for the getMultiAttribute test.
         self.targetAttribute = 'email'
-        # Target attributes for the getMultiAttributes test.
+        ## Target attributes for the getMultiAttributes test.
         self.targetAttributes = ['objectClass','cn']
         
 if __name__ == '__main__':

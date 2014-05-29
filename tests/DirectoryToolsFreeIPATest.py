@@ -32,11 +32,17 @@ Groups:
 '''
 
 class DirectoryToolsFreeIPATest(common,unittest.TestCase):
-    
+    '''
+    Unit tests for testing against a FreeIPA server.
+    '''
     def setUp(self):
+        '''
+        Prepare DirectoryTools for testing against a FreeIPA server.
+        '''
         
         print '\nSetting up for: {0}'.format(self.id())
         
+        ## Properties for my test FreeIPA domain.
         properties = {
             indexes.BASE_DN:'dc=freeipa,dc=lan',
             indexes.SERVER_ADDRESS:'centos-1.freeipa.lan',
@@ -48,28 +54,40 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
             #indexes.PROXY_IS_ANONYMOUS:True,
         }
 
+        ## DirectoryTools object to run tests with.
         self.auth = DirectoryTools.DirectoryTools(properties,'freeipa')
     
         # Defining group values.
+        ## Name of the administrator group.
         self.adminGroup = 'localadmins'
+        ## Name of the employee group.
         self.employeeGroup = 'employees'
+        ## Name of the guest group.
         self.guestGroup = 'guests'
+        ## Name of service access group.
         self.serviceGroup = 'wiki-access'
+        
         # Counts of the intended number of direct/indirect members in a group used in a unit test.
+        ## Intended number of direct users.
         self.serviceGroupDirectUserMemberCount = 1
+        ## Intended number of direct and indirect users.
         self.serviceGroupNestedUserMemberCount = 3
     
+        ## Name of user A.
         self.userA = 'alan'
+        ## Name of user B.
         self.userB = 'bob'
+        ## Name of user C.
         self.userC = 'carl'
+        ## Name of user D.
         self.userD = 'dave'
         
-        # All users have the same password in my test environment.
+        ## User password. All users have the same password in my test environment.
         self.userPassword = 'UserPassword1!'
         
-        # Target attribute for the getMultiAttribute test.
+        ## Target attribute for the getMultiAttribute test.
         self.targetAttribute = 'email'
-        # Target attributes for the getMultiAttributes test.
+        ## Target attributes for the getMultiAttributes test.
         self.targetAttributes = ['objectClass','cn']
         
 if __name__ == '__main__':

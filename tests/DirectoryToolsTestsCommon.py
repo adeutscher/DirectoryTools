@@ -4,30 +4,28 @@ import DirectoryTools
 import DirectoryToolsIndexes as indexes
 import unittest
 
-'''
-
-Contains common methods used in testing DirectoryTools across different varieties of LDAP servers.
-
-'''
-
 class DirectoryToolsTestsCommon(object):
-
     '''
-    Attempt to authenticate a user. Demonstrates a successful password and then modifies the password to create a failure.
+    Common tests that address multiple LDAP implementations. Child classes multiple inheritance to import these tests without running the test suite without a headless set of tests with no setUp method.
+    
+    Exceptions that are not valid for a specific LDAP server will be skipped in the overriding methods.
+    
     '''
+    
     def test_authenticate(self):
-        
+        '''
+        Attempt to authenticate a user. Demonstrates a successful password and then modifies the password to create a failure.
+        '''
         successfulAuth = self.auth.authenticate(self.userA,self.userPassword)
         self.assertTrue(successfulAuth)
         
         failedAuth = self.auth.authenticate(self.userA,self.userPassword + 'nope')
         self.assertFalse(failedAuth)
     
-    '''
-    Tests retrieving information on which users belong to a group.
-    '''
     def test_getNestedGroupMembers(self):
-        
+        '''
+        Tests rerieving information on which users belong to a group. Uses nesting to also collect all indirect members.
+        '''        
         # Searching the service group, which has both direct and indirect members.
         searchedGroup = self.serviceGroup
         
@@ -49,7 +47,9 @@ class DirectoryToolsTestsCommon(object):
             self.assertTrue(len(nestedMemberDNList[i]) > len(nestedMemberList[i]))
 
     def test_getGroupMembers(self):
-
+        '''
+        Tests retrieving information in which users belong to a group. Does not search in nested groups, and returns only direct memberships.
+        '''
         # Test getting group members without nesting. Direct user memberships only.
         self.auth.setProperty(indexes.NESTED_GROUPS,False)
         
@@ -68,10 +68,10 @@ class DirectoryToolsTestsCommon(object):
         for i in range(len(directMemberDNList)):
             self.assertTrue(len(directMemberDNList[i]) > len(directMemberList[i]))
 
-    '''
-    Tests the retrieval of a multi-valued attribute from an object. DirectoryTools returns multi-valued objects as lists.
-    '''
     def test_getMultiAttribute(self):
+        '''
+        Tests the retrieval of a multi-valued attribute from an object. DirectoryTools returns multi-valued objects as lists.
+        '''
         
         targetAttribute = 'memberOf'
         targetDN = self.auth.resolveGroupDN(self.employeeGroup)
@@ -80,11 +80,10 @@ class DirectoryToolsTestsCommon(object):
         
         print 'Displaying values of the attribute "{0}" for the object "{1}": {2}'.format(targetAttribute,targetDN,attributeList)
         
-    '''
-    Need to get multiple types of attributes at the same time.
-    '''    
     def test_getMultiAttributes(self):
-        
+        '''
+        Need to get multiple types of attributes at the same time.
+        '''         
         targetDN = self.auth.resolveGroupDN(self.employeeGroup)
         
         results = self.auth.getMultiAttributes(targetDN,self.targetAttributes)
@@ -94,11 +93,11 @@ class DirectoryToolsTestsCommon(object):
         for i in results:
                 self.assertTrue(len(results[i]) > 0)
         
-    '''
-    Test that we can detect whether or not a user is in the specified group.
-    '''
     def test_isUserInGroup(self):
-        
+        '''
+        Test that we can detect whether or not a user is in the specified group.
+        '''
+    
         targetGroup = self.serviceGroup
         
         targetMemberUID = self.userC
@@ -111,11 +110,11 @@ class DirectoryToolsTestsCommon(object):
         isNotMember = self.auth.isUserInGroup(targetNonMemberUID,targetGroup)
         self.assertFalse(isNotMember)
         
-    '''
-    Test the retrieval and manipulation of properties.
-    '''
+    
     def test_properties(self):
-        
+        '''
+        Test the retrieval and manipulation of properties.
+        '''    
         # Setting this boolean property to the inverse of its previous value.
         targetProperty = indexes.NESTED_GROUPS
         oldValue = self.auth.getProperty(targetProperty)

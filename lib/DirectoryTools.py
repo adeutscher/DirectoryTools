@@ -8,6 +8,9 @@ from datetime import datetime
 import DirectoryToolsIndexes as index
 import DirectoryToolsSchemas as schema
 
+# For Utilities:
+import base64
+
 DEBUG_LEVEL_NONE = 0
 DEBUG_LEVEL_MINOR = 1
 DEBUG_LEVEL_MAJOR = 2
@@ -968,3 +971,235 @@ class DirectoryTools:
             None
         '''
         self.properties.update(newProperties)
+
+class Utilities:
+    '''
+    Contains various utility methods to support DirectoryTools methods.
+    '''
+    
+    def getNTTimestampFromUnix(self,unixDate):
+        '''
+        Convert a UNIX timestamp to an NT timestamp.
+        
+        NT Timestamps are used in the following LDAP implementations (list will be updated as I confirm more implementations)
+            - Active Directory
+        
+        Args:
+            unixTime: Number representing a UNIX timestamp.
+            
+        Returns:
+            An NT timestamp that can be used in queries against Active Directory.
+        '''
+        
+        return int((unixDate + 11644473600) * 10000000)
+    
+    def getUnixTimestampDiff(self,unixDateA,unixDateB):
+        '''
+        Check the difference between two UNIX timestamps. Super-lazy method.
+        
+        Args:
+            unixDateA: A UNIX timestamp.
+            unixDateB: A UNIX timestamp.
+            
+        Returns:
+            The number of seconds between two timestamps.
+        '''
+        
+        return int(abs(a - b))
+        
+    def getUnixTimestampFromNT(self,ntTime):
+        '''
+        Convert an NT timestamp to a UNIX timestamp.
+        
+        Args:
+            ntDate: String representing an NT timestamp.
+            
+        Returns:
+            A UNIX timestamp.
+        '''
+        
+        return int(((ad / 10000000) - 11644473600))
+        
+    def getIso8601FromUnix(self,unixDate):
+        '''
+        Convert a UNIX timestamp to a more human-friendly ISO8601 format.
+        
+        See also: http://xkcd.com/1179/
+        
+        Args:
+            unixTime: A UNIX timestamp
+            
+        Returns:
+            String of the time in ISO 8601 format.
+        '''
+        t = datetime.datetime.fromtimestamp(unixDate)
+        return t.strftime('%Y-%m-%d')
+
+    def getActiveDirectoryPassword(self,password):
+        '''
+        Take a password and put it into a format that is used for submitting Active Directory passwords.
+        
+        Note that the password still needs to adhere to the domain's password policy.
+        
+        Args:
+            password: Password to encode.
+        
+        Returns:
+            A base 64-encoded unicode string.
+        '''
+        
+        unicodePass = unicode('\"' + password + '\"', 'iso-8859-1')
+        passwordValue = unicodePass.encode('utf-16-le')
+        encodedPassword = base64.b64encode(passwordValue)
+        
+        return encodedPassword
+    
+class UserAccountControlManager:
+    '''
+    Adds up flag values for Active Directory's UserAccountControl attribute.
+    
+    Built off of the content of http://support.microsoft.com/kb/305144
+    '''
+    
+    # awk '{print "## "$0"\nUAC_KEY_"$1" = \""$1"\"^C' templdap
+    
+    ## SCRIPT - The logon script will be run.
+    UAC_KEY_SCRIPT = "SCRIPT"
+    ## ACCOUNTDISABLE - The user account is disabled.
+    UAC_KEY_ACCOUNTDISABLE = "ACCOUNTDISABLE"
+    ## HOMEDIR_REQUIRED - The home folder is required.
+    UAC_KEY_HOMEDIR_REQUIRED = "HOMEDIR_REQUIRED"
+    ## LOCKOUT - Account is locked out.
+    UAC_KEY_LOCKOUT = "LOCKOUT"
+    ## PASSWD_NOTREQD - No password is required.
+    UAC_KEY_PASSWD_NOTREQD = "PASSWD_NOTREQD"
+    ## PASSWD_CANT_CHANGE - The user cannot change the password. This is a permission on the user's object. For information about how to programmatically set this permission, visit the following Web site: http://msdn2.microsoft.com/en-us/library/aa746398.aspx
+    UAC_KEY_PASSWD_CANT_CHANGE = "PASSWD_CANT_CHANGE"
+    ## ENCRYPTED_TEXT_PWD_ALLOWED - Unknown. Need to research.
+    UAC_KEY_ENCRYPTED_TEXT_PWD_ALLOWED = "ENCRYPTED_TEXT_PWD_ALLOWED"
+    ## ENCRYPTED_TEXT_PASSWORD_ALLOWED - The user can send an encrypted password.
+    UAC_KEY_ENCRYPTED_TEXT_PASSWORD_ALLOWED = "ENCRYPTED_TEXT_PASSWORD_ALLOWED"
+    ## TEMP_DUPLICATE_ACCOUNT - This is an account for users whose primary account is in another domain. This account provides user access to this domain, but not to any domain that trusts this domain. This is sometimes referred to as a local user account.
+    UAC_KEY_TEMP_DUPLICATE_ACCOUNT = "TEMP_DUPLICATE_ACCOUNT"
+    ## NORMAL_ACCOUNT - This is a default account type that represents a typical user.
+    UAC_KEY_NORMAL_ACCOUNT = "NORMAL_ACCOUNT"
+    ## INTERDOMAIN_TRUST_ACCOUNT - This is a permit to trust an account for a system domain that trusts other domains.
+    UAC_KEY_INTERDOMAIN_TRUST_ACCOUNT = "INTERDOMAIN_TRUST_ACCOUNT"
+    ## WORKSTATION_TRUST_ACCOUNT - This is a computer account for a computer that is running Microsoft Windows NT 4.0 Workstation, Microsoft Windows NT 4.0 Server, Microsoft Windows 2000 Professional, or Windows 2000 Server and is a member of this domain.
+    UAC_KEY_WORKSTATION_TRUST_ACCOUNT = "WORKSTATION_TRUST_ACCOUNT"
+    ## SERVER_TRUST_ACCOUNT - This is a computer account for a domain controller that is a member of this domain.
+    UAC_KEY_SERVER_TRUST_ACCOUNT = "SERVER_TRUST_ACCOUNT"
+    ## DONT_EXPIRE_PASSWD - Represents the password, which should never expire on the account.
+    UAC_KEY_DONT_EXPIRE_PASSWORD = "DONT_EXPIRE_PASSWD"
+    ## MNS_LOGON_ACCOUNT - This is an MNS logon account.
+    UAC_KEY_MNS_LOGON_ACCOUNT = "MNS_LOGON_ACCOUNT"
+    ## SMARTCARD_REQUIRED - When this flag is set, it forces the user to log on by using a smart card.
+    UAC_KEY_SMARTCARD_REQUIRED = "SMARTCARD_REQUIRED"
+    ## TRUSTED_FOR_DELEGATION - When this flag is set, the service account (the user or computer account) under which a service runs is trusted for Kerberos delegation. Any such service can impersonate a client requesting the service. To enable a service for Kerberos delegation, you must set this flag on the userAccountControl property of the service account.
+    UAC_KEY_TRUSTED_FOR_DELEGATION = "TRUSTED_FOR_DELEGATION"
+    ## NOT_DELEGATED - When this flag is set, the security context of the user is not delegated to a service even if the service account is set as trusted for Kerberos delegation.
+    UAC_KEY_NOT_DELEGATED = "NOT_DELEGATED"
+    ## USE_DES_KEY_ONLY - (Windows 2000/Windows Server 2003) Restrict this principal to use only Data Encryption Standard (DES) encryption types for keys.
+    UAC_KEY_USE_DES_KEY_ONLY = "USE_DES_KEY_ONLY"
+    ## DONT_REQUIRE_PREAUTH - (Windows 2000/Windows Server 2003) This account does not require Kerberos pre-authentication for logging on.
+    UAC_KEY_DONT_REQUIRE_PREAUTH = "DONT_REQUIRE_PREAUTH"
+    ## PASSWORD_EXPIRED - (Windows 2000/Windows Server 2003) The user's password has expired.
+    UAC_KEY_PASSWORD_EXPIRED = "PASSWORD_EXPIRED"
+    ## TRUSTED_TO_AUTH_FOR_DELEGATION - (Windows 2000/Windows Server 2003) The account is enabled for delegation. This is a security-sensitive setting. Accounts that have this option enabled should be tightly controlled. This setting lets a service that runs under the account assume a client's identity and authenticate as that user to other remote servers on the network. 
+    UAC_KEY_TRUSTED_TO_AUTH_FOR_DELEGATION = "TRUSTED_TO_AUTH_FOR_DELEGATION"
+    ## PARTIAL_SECRETS_ACCOUNT - (Windows Server 2008/Windows Server 2008 R2) The account is a read-only domain controller (RODC). This is a security-sensitive setting. Removing this setting from an RODC compromises security on that server.
+    UAC_KEY_PARTIAL_SECRETS_ACCOUNT = "PARTIAL_SECRETS_ACCOUNT"
+    
+    def __init__(self):
+        '''
+        Initializes the dictionary of stored values, and preps the list of activated values.
+        '''
+        
+        ## Dictionary of decimal values for the UAC properties:
+        self.uacFlagKeyValues = {
+            self.UAC_KEY_SCRIPT : 1,
+            self.UAC_KEY_ACCOUNTDISABLE : 2,
+            self.UAC_KEY_HOMEDIR_REQUIRED : 8,
+            self.UAC_KEY_LOCKOUT : 16,
+            self.UAC_KEY_PASSWD_NOTREQD : 32,
+            self.UAC_KEY_PASSWD_CANT_CHANGE : 0,
+            self.UAC_KEY_ENCRYPTED_TEXT_PWD_ALLOWED : 128,
+            self.UAC_KEY_TEMP_DUPLICATE_ACCOUNT : 256,
+            self.UAC_KEY_NORMAL_ACCOUNT : 512,
+            self.UAC_KEY_INTERDOMAIN_TRUST_ACCOUNT : 2048,
+            self.UAC_KEY_WORKSTATION_TRUST_ACCOUNT : 4096,
+            self.UAC_KEY_SERVER_TRUST_ACCOUNT : 8192,
+            self.UAC_KEY_DONT_EXPIRE_PASSWORD : 65536,
+            self.UAC_KEY_MNS_LOGON_ACCOUNT : 131072,
+            self.UAC_KEY_SMARTCARD_REQUIRED : 262144,
+            self.UAC_KEY_TRUSTED_FOR_DELEGATION : 524288,
+            self.UAC_KEY_NOT_DELEGATED : 1048576,
+            self.UAC_KEY_USE_DES_KEY_ONLY : 2097152,
+            self.UAC_KEY_DONT_REQUIRE_PREAUTH : 4194304,
+            self.UAC_KEY_PASSWORD_EXPIRED : 8388608,
+            self.UAC_KEY_TRUSTED_TO_AUTH_FOR_DELEGATION : 16777216,
+            self.UAC_KEY_PARTIAL_SECRETS_ACCOUNT : 67108864,
+        }
+        
+        ## A list of value keys for enabled flags.
+        self.enabledFlags = []
+        
+    def sumUAC(self,uacList=[],extraValueList=[]):
+        '''
+        Compile UAC flags into a value.
+        
+        Args:
+            uacList: A list of UAC flags.
+            extraValueList: A list of integer values to add, in case there were some undocumented flags that I missed.
+            
+        Returns:
+            An integer made of the sum of all activated UAC flags.
+        '''
+        
+        flagSum = 0
+        
+        for i in self.enabledFlags:
+            try:
+                flagSum += int(self.uacFlagKeyValues[i])
+            except KeyError:
+                pass
+        
+        # Add any extra values.
+        for i in extraValueList:
+            flagSum += i
+            
+        return flagSum
+        
+    def enableFlag(self,uacFlag):
+        '''
+        Enables a UAC flag.
+        
+        Args:
+            uacFlag: UAC flag key to add to the list of enabled keys.
+            
+        Returns:
+            True if the value was properly set, False otherwise.
+        '''
+        
+        if uacFlag not in self.enabledFlags:
+            self.enabledFlags.append(uacFlag)
+            return True
+        else:
+            print self.enabledFlags
+            return False
+            
+    def disableFlag(self,uacFlag):
+        '''
+        Disables a UAC flag.
+        
+        Args:
+            uacFlag: UAC flag key to remove from the list of enabled keys.
+            
+        Returns:
+            True of the value was unset, False if it wasn't there to begin with.
+        '''
+        if uacFlag in self.enabledFlags:
+            self.enabledFlags.remove(uacFlag)
+            return True
+            
+        return False

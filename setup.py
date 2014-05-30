@@ -20,6 +20,7 @@ setup(name="DirectoryTools",
     maintainer_email='alan@gadgeteering.ca',
     py_modules=["DirectoryTools","DirectoryToolsSchemas","DirectoryToolsIndexes"],
     package_dir={"":"lib"},
+    install_requires = ['python-ldap'],
     include_package_data=True,
     zip_safe=False
 )

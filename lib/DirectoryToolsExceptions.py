@@ -11,7 +11,7 @@ class ExceededMaxDepthException(Exception):
         Args:
             message: Debug message
             depth: The depth that we were at when we raised the exception.
-            resultList: Contains any results that we still want to pass up. We may have searched too far, but we still need the information from the valid layers.
+            resultItem: Contains any results that we still want to pass up. We may have searched too far, but we still need the information from the valid layers.
         '''
         ## Debug message
         self.message = message
@@ -42,6 +42,7 @@ class PropertyNotFoundException(Exception):
         
         ## The property that could not be found.
         self.key = key
+        ## A boolean value to indicate that we tried to use the default value.
         self.triedDefault = triedDefault
         
     def __str__(self):

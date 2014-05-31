@@ -1032,7 +1032,7 @@ class Utilities:
             - Active Directory
         
         Args:
-            unixTime: Number representing a UNIX timestamp.
+            unixDate: Number representing a UNIX timestamp.
             
         Returns:
             An NT timestamp that can be used in queries against Active Directory.
@@ -1054,7 +1054,7 @@ class Utilities:
         
         return int(abs(a - b))
         
-    def getUnixTimestampFromNT(self,ntTime):
+    def getUnixTimestampFromNT(self,ntDate):
         '''
         Convert an NT timestamp to a UNIX timestamp.
         
@@ -1074,7 +1074,7 @@ class Utilities:
         See also: http://xkcd.com/1179/
         
         Args:
-            unixTime: A UNIX timestamp
+            unixDate: A UNIX timestamp
             
         Returns:
             String of the time in ISO 8601 format.

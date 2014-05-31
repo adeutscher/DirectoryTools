@@ -7,6 +7,7 @@ from datetime import datetime
 
 import DirectoryToolsIndexes as index
 import DirectoryToolsSchemas as schema
+import DirectoryToolsExceptions as exceptions
 
 # For Utilities:
 import base64
@@ -203,8 +204,9 @@ class DirectoryTools:
         memberList = []
         
         if depth > self.getProperty(index.MAX_DEPTH):
-            self.printDebug("Exceeded max depth of {1}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR)
-            return memberList
+            raise exceptions.ExceededMaxDepthException(depth=depth,resultItem=memberList)
+            #self.printDebug("Exceeded max depth of {1}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR)
+            #return memberList
 
         # Compile query for finding group.
         #query = '(&(objectClass=%s)(%s=%s))' % tuple([self.getProperty(index.GROUP_CLASS),groupIdentifier,groupName])
@@ -235,9 +237,13 @@ class DirectoryTools:
                     # * The object is actually a group (kind of important!).
                     
                     self.printDebug("Searching within nested group '{0}'".format(member), DEBUG_LEVEL_MAJOR)
-                    memberList.extend(
-                        self.getGroupMembers(groupName=member,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
-                    )
+                    
+                    try:
+                        memberList.extend(
+                            self.getGroupMembers(groupName=member,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
+                        )
+                    except exceptions.ExceededMaxDepthException as e:
+                        memberList.extend(e.resultItem)
 
             else:
                 # POSIX-style members can be trusted to be the type they are labeled as.
@@ -283,21 +289,23 @@ class DirectoryTools:
         Returns:
             An initialized LDAP connection. Binding to the server is done in separate methods.
         '''
-        
-        protocol = ('ldap','ldaps')[self.getProperty(index.USE_SSL)]
-        
-        uri = '{0}://{1}:{2}'.format(protocol,self.getProperty(index.SERVER_ADDRESS),self.getProperty(index.SERVER_PORT))
-        self.printDebug("Connection URI: {0}".format(uri),DEBUG_LEVEL_MAJOR)
-        
-        connectionProperties = self.getProperty(index.LDAP_PROPERTIES)
-        
-        connection = ldap.initialize(uri)
-        
-        for i in connectionProperties:
-            self.printDebug('Applying connection property \'{0}\' to connection. Value: \'{1}\''.format(i,connectionProperties[i]),self.DEBUG_LEVEL_MAJOR)
-            connection.set_option(i,connectionProperties[i])
-        
-        return connection
+        try:
+            protocol = ('ldap','ldaps')[self.getProperty(index.USE_SSL)]
+            
+            uri = '{0}://{1}:{2}'.format(protocol,self.getProperty(index.SERVER_ADDRESS),self.getProperty(index.SERVER_PORT))
+            self.printDebug("Connection URI: {0}".format(uri),DEBUG_LEVEL_MAJOR)
+            
+            connectionProperties = self.getProperty(index.LDAP_PROPERTIES)
+            
+            connection = ldap.initialize(uri)
+            
+            for i in connectionProperties:
+                self.printDebug('Applying connection property \'{0}\' to connection. Value: \'{1}\''.format(i,connectionProperties[i]),self.DEBUG_LEVEL_MAJOR)
+                connection.set_option(i,connectionProperties[i])
+            
+            return connection
+        except Exception as e:
+            raise exceptions.ConnectionFailedException(originalException=e)
 
     def getMultiAttribute(self,dn,attribute):
         '''
@@ -367,10 +375,10 @@ class DirectoryTools:
             if printDebugMessage:
                 self.printDebug("Fetching property '{0}'".format(key),self.DEBUG_LEVEL_MINOR)
             return self.properties[key]
-        except KeyError:
+        except KeyError as e:
             if exitOnFail:
                 print "Property '{0}' not found. Exiting...".format(key)
-                exit(1)
+                raise exceptions.PropertyNotFoundException(originalException=e)
             elif printDebugMessage:
                 self.printDebug("Property '{0}' not found.".format(key),self.DEBUG_LEVEL_MINOR)
                 
@@ -400,15 +408,13 @@ class DirectoryTools:
             except ldap.LDAPError as e:
                 # This exception is thrown when the call to connection.simple_bind_s fails.
                 print "Proxy connection failed."
-                print e
+
                 if e.args[0]['desc'] == 'Invalid credentials':
                     # The error happened because the proxy connection was given the wrong credentials.
-                    print "Invalid proxy credentials."
-                    exit(2)
-                    
-                
-                traceback.print_exc(file=sys.stdout)
-                exit(1)
+                    raise exceptions.ProxyAuthFailedException(originalException=e)
+                else:
+                    raise exceptions.ProxyFailedException(originalException=e)
+            
             self.printDebug("Successfully created proxy handle.",DEBUG_LEVEL_EXTREME)
         else:
             self.printDebug("Returning cached proxy handle.",DEBUG_LEVEL_EXTREME)
@@ -557,8 +563,7 @@ class DirectoryTools:
         self.cache[cacheCategory][cacheId][groupName] = 1
         
         if int(depth) > self.getProperty(index.MAX_DEPTH):
-            self.printDebug("Exceeded max depth of {0}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR,spaces=depth)
-            return False
+            raise exceptions.ExceededMaxDepthException(depth=depth,resultItem=False)
         
         # We need the DN of the group to get its attributes.
         if groupNameIsDN:
@@ -628,8 +633,13 @@ class DirectoryTools:
         
             # We have completed cycling through the memberList variable for users, and have not found a matching user.
             for nestedGroup in nestedGroupList:
-                if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1),cacheId=cacheId):
-                    return True
+                try:
+                    if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1),cacheId=cacheId):
+                        return True
+                except exceptions.ExceededMaxDepthException as e:
+                    # Re-raising the exception. I have the suspicion that if I didn't I'd have many superfluous lines in stack traces.
+                    # Acknowledging that this means we won't be searching the other items in the list of groups. They would all be of (depth+1), so they would all raise the exception again
+                    raise exceptions.ExceededMaxDepthException(message=e.message,depth=e.depth,resultItem=e.resultItem)
         # Fall back to false if we have not gotten a True response back by this point.
         return False
 
@@ -760,11 +770,10 @@ class DirectoryTools:
         
         try:        
             results = handle.search_s(base,ldap.SCOPE_SUBTREE,query,attributes)
-        except:
+        except Exception as e:
             self.printDebug("BAD QUERY",DEBUG_LEVEL_EXTREME)
-            traceback.print_exc(file=sys.stdout)
-            # Return the empty list.
-            return returnList
+            raise exceptions.BadQueryException(originalException=e)
+        
         for result in results:
             # Some LDAP servers include reference information in place of the attributes that we want to search for.
             # If this is the case, the distinguished name of the 'row' will be set to None.

@@ -206,7 +206,7 @@ class DirectoryTools:
         
         memberList = []
         
-        if depth > self.getProperty(index.MAX_DEPTH):
+        if depth > self.getProperty(index.MAX_DEPTH) and not self.getProperty(index.MAX_DEPTH) < 0:
             raise exceptions.ExceededMaxDepthException(depth=depth,resultItem=memberList)
             #self.printDebug("Exceeded max depth of {1}.".format(self.getProperty(index.MAX_DEPTH)), DEBUG_LEVEL_MINOR)
             #return memberList
@@ -233,7 +233,7 @@ class DirectoryTools:
                     self.printDebug("Adding object '{0}' to list (Passed Filter).".format(member), DEBUG_LEVEL_MAJOR)
                     memberList.append(member)
                 
-                if self.getProperty(index.NESTED_GROUPS) and not (depth >= self.getProperty(index.MAX_DEPTH)) and self.isObjectGroup(member):
+                if self.getProperty(index.NESTED_GROUPS) and (not (depth >= self.getProperty(index.MAX_DEPTH)) and (notself.getProperty(index.MAX_DEPTH) < 0)) and self.isObjectGroup(member):
                     # If this section is being executed we have confirmed three things: 
                     # * We want to search in nested groups.
                     # * We have not yet exceeded the maximum search depth.
@@ -574,7 +574,7 @@ class DirectoryTools:
             return False
         self.cache[cacheCategory][cacheId][groupName] = 1
         
-        if int(depth) > self.getProperty(index.MAX_DEPTH):
+        if int(depth) > self.getProperty(index.MAX_DEPTH) and not self.getProperty(index.MAX_DEPTH) < 0:
             raise exceptions.ExceededMaxDepthException(depth=depth,resultItem=False)
         
         # We need the DN of the group to get its attributes.

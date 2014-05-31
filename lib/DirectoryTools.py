@@ -37,6 +37,8 @@ class DirectoryTools:
         index.USER_RDN:'',
         index.GROUP_RDN:'',
         index.PROXY_IS_ANONYMOUS:False,
+        index.DEFAULT_CACHE_CATEGORY:'general',
+        index.DEFAULT_CACHE_ID:'general',
     }
     
     ## No debugging.
@@ -155,7 +157,7 @@ class DirectoryTools:
         return "{0}{1}".format(self.getProperty(index.GROUP_RDN),self.getProperty(index.BASE_DN))
           
 
-    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0,cacheId=True):
+    def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0,cacheId=False):
         '''
         List all members of a group.
         
@@ -173,7 +175,12 @@ class DirectoryTools:
         '''
         
         cacheCategory = 'searchedGroups'
-        cacheId = self.initCache(cacheCategory,cacheId)
+        if not cacheId:
+            cacheTuple = self.initCache(cacheCategory,cacheId,generateCacheId=True)
+        else:
+            cacheTuple = self.initCache(cacheCategory,cacheId)
+            
+        cacheCategory,cacheId = cacheTuple
         
         if not groupNameIsDN:
             # We want to confirm that the group exists and get its Distinguished Name.
@@ -443,18 +450,17 @@ class DirectoryTools:
         return self.getGroupMembers(groupName=groupName,returnMembersAsDN=returnMembersAsDN,objectClassFilter=self.getProperty(index.USER_CLASS),uidAttribute=self.getProperty(index.USER_UID_ATTRIBUTE))
 
 
-    def initCache(self,category='general',cacheId=True):
+    def initCache(self,category='general',cacheId=None,generateCacheId=False):
         '''
         Ensures that a cache is initialized. A specific cache will be a dictionary indexed by cacheId, which is nested in a cache for categories.
         
         Args:
-            category: The general category of the cache. For example, 'searchedGroups', 'resolvedDNs'
-            cacheId: If set to True, the method will generate a new cache ID using a UNIX timestamp and the current microseconds. If a string is provided, we will ensure use the string as our cacheId value.
-            
+            category: The general category of the cache. For example, 'searchedGroups', 'resolvedDNs'. If left at none, the default category will be used according to the DEFAULT_CACHE_CATEGORY property.
+            cacheId: Specifies the cache ID. If a value is given, the cacheId will be set to this value. If left at default of None, the default cache will be used according to the DEFAULT_CACHE_ID property.
+            generateCacheId: If set to True, a cache ID will be generated using a UNIX timestamp and the current microseconds. Setting this value to True will take precedence over the value of cacheId.
         Returns:
-            A string cacheId being used.
+            A tuple. The first value will cacheCategory that was used, and the second value will be the cacheId being used.
         '''
-        defaultCacheId = 'general'
         
         # Make sure that the cache object is initialized.   
         try:
@@ -462,15 +468,13 @@ class DirectoryTools:
                 self.cache = {}
         except NameError:
             self.cache = {}
-            
-        # Make sure that the category is initialized.
-        if category not in self.cache:
-            self.cache[category] = {}
+        
+        # Check if we need to use the default category.
+        if not category:
+            category = self.getProperty(index.DEFAULT_CACHE_CATEGORY)
         
         # Confirm the cache ID that we'll be working with.
-        if cacheId and type(cacheId) is bool:
-            # Need to generate a new cache Id.
-            
+        if generateCacheId:
             # Using a UNIX timestamp in milliseconds to get my cache Id.
             timeObj = datetime.now()
             cacheId =  str(time()) + str(timeObj.microsecond)
@@ -481,15 +485,26 @@ class DirectoryTools:
             cacheId = str(cacheId)
         else:
             # Not using a specific cache Id. Defaulting to general.
-            cacheId = defaultCacheId
+            cacheId = self.getProperty(index.DEFAULT_CACHE_ID)
             
+        # Make sure that the category is initialized.
+        # Do not overwrite an existing dictionary, but correct any non-dictionary that has snuck in.
+        if category not in self.cache or type(self.cache[category]) is not dict:
+            self.printDebug("Creating cache category '{0}'".format(category),self.DEBUG_LEVEL_EXTREME)
+            self.cache[category] = {}
+        else:
+            self.printDebug("Cache category '{0}' already exists.".format(category),self.DEBUG_LEVEL_EXTREME)
+
         # Make sure that the cache ID of the category is initialized.
         # Do not overwrite an existing dictionary, but correct any non-dictionary that has snuck in.
         if cacheId not in self.cache[category] or type(self.cache[category][cacheId]) is not dict:
+            self.printDebug("Creating '{0}' cache with Id of '{1}'".format(category,cacheId),self.DEBUG_LEVEL_EXTREME)
             self.cache[category][cacheId] = {}
+        else:
+            self.printDebug("'{0}' cache with id of '{1}' already exists.".format(category,cacheId),self.DEBUG_LEVEL_EXTREME)
         
         # Return the cache id that we are using. A recursive function must use the same cache Id.
-        return cacheId
+        return tuple([category,cacheId])
 
     
     def isObjectGroup(self,groupDN):
@@ -504,7 +519,7 @@ class DirectoryTools:
         '''
         return self.isObjectOfClass(objectDN=groupDN,objectClass=self.getProperty(index.GROUP_CLASS))
 
-    def isObjectInGroup(self,objectName,groupName,objectNameIsDN=False,groupNameIsDN=False,objectIdentifier=False,objectClass=False,objectBase=False,depth=0,cacheId=True):
+    def isObjectInGroup(self,objectName,groupName,objectNameIsDN=False,groupNameIsDN=False,objectIdentifier=False,objectClass=False,objectBase=False,depth=0,cacheId=False):
         '''
         Determines whether or not a user is in a group. This is a will recursively call itself until it exceeds the value of the MAX_DEPTH property.
         
@@ -526,7 +541,12 @@ class DirectoryTools:
         '''
         
         cacheCategory='searchedGroups'
-        cacheId = self.initCache(cacheCategory,cacheId)
+        if not cacheId:
+            cacheTuple = self.initCache(cacheCategory,cacheId,generateCacheId=True)
+        else:
+            cacheTuple = self.initCache(cacheCategory,cacheId)
+            
+        cacheCategory,cacheId = cacheTuple
         
         self.printDebug("Searching for user '{0}' in group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
         
@@ -626,7 +646,8 @@ class DirectoryTools:
         '''
         
         cacheCategory='classCache'
-        cacheId=self.initCache(cacheCategory,objectClass)
+        cacheTuple = self.initCache(cacheCategory,objectClass)
+        cacheCategory,cacheId = cacheTuple
         
         self.printDebug("Checking whether the object at '{0}' is of class '{1}'".format(objectDN,cacheId),DEBUG_LEVEL_MAJOR)
         
@@ -766,7 +787,8 @@ class DirectoryTools:
         '''  
         
         cacheCategory='resolvedGroups'
-        cacheId = self.initCache(cacheCategory,False)
+        cacheTuple = self.initCache(cacheCategory)
+        cacheCategory,cacheId = cacheTuple
         
         if not uidAttribute:
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
@@ -797,7 +819,9 @@ class DirectoryTools:
         '''
         
         cacheCategory='resolvedGroups'
-        cacheId = self.initCache(cacheCategory,False)
+        cacheTuple = self.initCache(cacheCategory)
+        cacheCategory,cacheId = cacheTuple
+        
         
         if not uidAttribute:
             # No override provided.
@@ -880,7 +904,8 @@ class DirectoryTools:
         '''
         
         cacheCategory='resolvedUsers'
-        cacheId = self.initCache(cacheCategory,False)
+        cacheTuple = self.initCache(cacheCategory)
+        cacheCategory,cacheId = cacheTuple
         
         if not uidAttribute:
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
@@ -909,7 +934,8 @@ class DirectoryTools:
             If the UID was not successfully resolved, return False.
         '''
         cacheCategory='resolvedUsers'
-        cacheId = self.initCache(cacheCategory,False)
+        cacheTuple = self.initCache(cacheCategory)
+        cacheCategory,cacheId = cacheTuple
         
         if not uidAttribute:
             # No override provided.

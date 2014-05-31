@@ -31,16 +31,18 @@ class PropertyNotFoundException(Exception):
     An exception to be raised when a property cannot be found.
     '''
     
-    def __init__(self,key):
+    def __init__(self,key,triedDefault=False):
         '''
         Initializes the exception.
         
         Args:
-            key: The property that could not be found.
+            key: String of the property that could not be found.
+            triedDefault: A boolean value to indicate that we tried to use the default value.
         '''
         
         ## The property that could not be found.
         self.key = key
+        self.triedDefault = triedDefault
         
     def __str__(self):
         '''

@@ -23,7 +23,7 @@ class DirectoryTools:
     """
     
     ## Default properties.
-    properties = {
+    defaultProperties = {
         index.DEBUG_LEVEL:0,
         index.SERVER_ADDRESS:'',
         index.SERVER_PORT:389,
@@ -66,6 +66,9 @@ class DirectoryTools:
             properties: Dictionary of properties. Can be updated through setProperties or updateProperties.
             template: String describing a template schema that defines common properties given LDAP server implementation. If the schema is not found, then the program will exit.
         '''
+        
+        ## Dictionary of property values.
+        self.properties = self.defaultProperties
         
         if template:
             try: 
@@ -358,13 +361,14 @@ class DirectoryTools:
             else:
                 return []
 
-    def getProperty(self,key,exitOnFail=True,printDebugMessage=True):
+    def getProperty(self,key,useDefault=True,defaultOverride=None,printDebugMessage=True):
         ''' 
         Gets a property value.
         
         Args:
             key: Name of the property to retrieve. Recommended to go through the values in DirectoryToolsIndexes.
-            exitOnFail: If set to True, the script will exit with an error code if the key is not found in our properties.
+            useDefault: a boolean flag. If set to True, the method will attempt to look in self.defaultProperties before throwing an exception.
+            defaultOverride: Value to provide as a default if the value is not found in self.debugProperties. This takes precedence over a value in self.defaultProperties.
             printDebugMessage: Since printDebug relies on this method, this is our current solution for avoiding an endless loop. Needs improvement.
             
         Returns:
@@ -376,13 +380,21 @@ class DirectoryTools:
                 self.printDebug("Fetching property '{0}'".format(key),self.DEBUG_LEVEL_MINOR)
             return self.properties[key]
         except KeyError as e:
-            if exitOnFail:
-                print "Property '{0}' not found. Exiting...".format(key)
-                raise exceptions.PropertyNotFoundException(originalException=e)
-            elif printDebugMessage:
-                self.printDebug("Property '{0}' not found.".format(key),self.DEBUG_LEVEL_MINOR)
-                
-            return None
+            self.printDebug("Could not find key '{0}' in properties.".format(key),self.DEBUG_LEVEL_MINOR)
+            if defaultOverride is not None:
+                self.printDebug("Using override default: {0}".format(defaultOverride),self.DEBUG_LEVEL_MINOR)
+                return defaultOverride
+            elif useDefault:
+                try:
+                    self.printDebug("Searching default properties...",self.DEBUG_LEVEL_MINOR)
+                    return self.defaultProperties[key]
+                except KeyError as e:
+                    # The property *still* wasn't found in the default properties.
+                    self.printDebug("Could not find key '{0}' in default properties".format(key),self.DEBUG_LEVEL_MINOR)
+                    raise exceptions.PropertyNotFoundException(key=key,triedDefault=True)
+            else:
+                # No override, and not using the default.
+                raise exceptions.PropertyNotFoundException(key=key)
 
     def getProxyHandle(self):
         '''

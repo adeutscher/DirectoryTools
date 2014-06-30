@@ -70,6 +70,7 @@ def application(environ, start_response):
     falseResponse = "Failed"
     
     # Default response: False
+    content = falseResponse
     
     try:
         dt = DirectoryTools.DirectoryTools(properties,'openldap')

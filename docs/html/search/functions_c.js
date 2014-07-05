@@ -1,6 +1,9 @@
 var searchData=
 [
-  ['setproperty',['setProperty',['../classDirectoryTools_1_1DirectoryTools.html#a451e49b2fab5e6cf86a05a11f4d6d348',1,'DirectoryTools::DirectoryTools']]],
-  ['setup',['setUp',['../classDirectoryToolsActiveDirectoryTestGC_1_1DirectoryToolsActiveDirectoryTestGC.html#ae4d4d66e8506ee7d87f6cf5c4cbb2679',1,'DirectoryToolsActiveDirectoryTestGC.DirectoryToolsActiveDirectoryTestGC.setUp()'],['../classDirectoryToolsActiveDirectoryTestLDAP_1_1DirectoryToolsActiveDirectoryTestLDAP.html#ac5ccefc2a48513880794cbc0c5809502',1,'DirectoryToolsActiveDirectoryTestLDAP.DirectoryToolsActiveDirectoryTestLDAP.setUp()'],['../classDirectoryToolsFreeIPATest_1_1DirectoryToolsFreeIPATest.html#a1ecf0a076652e99c9a4db703dfd8afda',1,'DirectoryToolsFreeIPATest.DirectoryToolsFreeIPATest.setUp()'],['../classDirectoryToolsOpenLDAPTest_1_1DirectoryToolsOpenLDAPTest.html#aed0395df39cf251ec864b01106fd77eb',1,'DirectoryToolsOpenLDAPTest.DirectoryToolsOpenLDAPTest.setUp()']]],
-  ['sumuac',['sumUAC',['../classDirectoryTools_1_1UserAccountControlManager.html#a33602fbe2922a319db62733636e8b309',1,'DirectoryTools::UserAccountControlManager']]]
+  ['resolvegroupdn',['resolveGroupDN',['../classDirectoryTools_1_1DirectoryTools.html#af28af1abd0e5d443a518aa254010ec18',1,'DirectoryTools::DirectoryTools']]],
+  ['resolvegroupuid',['resolveGroupUID',['../classDirectoryTools_1_1DirectoryTools.html#a35d0e036f2234e26e26e4560039d5165',1,'DirectoryTools::DirectoryTools']]],
+  ['resolveobjectdn',['resolveObjectDN',['../classDirectoryTools_1_1DirectoryTools.html#a6e6b66aca398ecad9049bbbd05c41526',1,'DirectoryTools::DirectoryTools']]],
+  ['resolveobjectuid',['resolveObjectUID',['../classDirectoryTools_1_1DirectoryTools.html#a5a14d7092358afe245d4e08c79bd2d37',1,'DirectoryTools::DirectoryTools']]],
+  ['resolveuserdn',['resolveUserDN',['../classDirectoryTools_1_1DirectoryTools.html#a10cfbc710fa06b6076b817a98d096cfb',1,'DirectoryTools::DirectoryTools']]],
+  ['resolveuseruid',['resolveUserUID',['../classDirectoryTools_1_1DirectoryTools.html#a841d0514d80a9cd799c0e8196b828832',1,'DirectoryTools::DirectoryTools']]]
 ];

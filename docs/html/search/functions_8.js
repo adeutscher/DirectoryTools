@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['makespaces',['makeSpaces',['../classDirectoryTools_1_1DirectoryTools.html#a0f94aba88fc113ace6fe4129d4488003',1,'DirectoryTools::DirectoryTools']]]
+  ['loadconfigfile',['loadConfigFile',['../classDirectoryTools_1_1DirectoryTools.html#ae2da03baccf6f237d3bfab2d9da1579b',1,'DirectoryTools::DirectoryTools']]]
 ];

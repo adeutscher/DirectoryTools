@@ -146,6 +146,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a38340c5c0baf4450b7a15fb652377129"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#a38340c5c0baf4450b7a15fb652377129">initCache</a></td></tr>
 <tr class="memdesc:a38340c5c0baf4450b7a15fb652377129"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ensures that a cache is initialized.  <a href="#a38340c5c0baf4450b7a15fb652377129">More...</a><br/></td></tr>
 <tr class="separator:a38340c5c0baf4450b7a15fb652377129"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2da03baccf6f237d3bfab2d9da1579b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#ae2da03baccf6f237d3bfab2d9da1579b">loadConfigFile</a></td></tr>
+<tr class="memdesc:ae2da03baccf6f237d3bfab2d9da1579b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the contents of a configuration file into self.properties.  <a href="#ae2da03baccf6f237d3bfab2d9da1579b">More...</a><br/></td></tr>
+<tr class="separator:ae2da03baccf6f237d3bfab2d9da1579b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c6d71d033377ff3237cf1ca82d42b73"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#a9c6d71d033377ff3237cf1ca82d42b73">isObjectGroup</a></td></tr>
 <tr class="memdesc:a9c6d71d033377ff3237cf1ca82d42b73"><td class="mdescLeft">&#160;</td><td class="mdescRight">Confirms that the specified object is a group by virtue of having an objectClass value of the GROUP_CLASS property.  <a href="#a9c6d71d033377ff3237cf1ca82d42b73">More...</a><br/></td></tr>
 <tr class="separator:a9c6d71d033377ff3237cf1ca82d42b73"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -224,6 +227,9 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#aed1e97a70f476def47ea3ce887f67a9f">DEBUG_LEVEL_EXTREME</a> = 3</td></tr>
 <tr class="memdesc:aed1e97a70f476def47ea3ce887f67a9f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Debug level 3. <br/></td></tr>
 <tr class="separator:aed1e97a70f476def47ea3ce887f67a9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3d4cee2607138a4541b024551f321ed4"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a3d4cee2607138a4541b024551f321ed4"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>CONFIG_SECTION_HEADER</b> = '<a class="el" href="classDirectoryTools_1_1DirectoryTools.html">DirectoryTools</a>'</td></tr>
+<tr class="separator:a3d4cee2607138a4541b024551f321ed4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3bcdfa100394a7fc9a38ace53bc2027e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#a3bcdfa100394a7fc9a38ace53bc2027e">proxyHandle</a> = False</td></tr>
 <tr class="memdesc:a3bcdfa100394a7fc9a38ace53bc2027e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handle used to search the directory server.  <a href="#a3bcdfa100394a7fc9a38ace53bc2027e">More...</a><br/></td></tr>
 <tr class="separator:a3bcdfa100394a7fc9a38ace53bc2027e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -254,7 +260,13 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>template</em> = <code>'openldap'</code>&#160;</td>
+          <td class="paramname"><em>template</em> = <code>'openldap'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>configFile</em> = <code>False</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1107,6 +1119,40 @@ None </dd></dl>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>True if the user is in the group, False if they are not. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ae2da03baccf6f237d3bfab2d9da1579b"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def DirectoryTools.DirectoryTools.loadConfigFile </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>configFilePath</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Loads the contents of a configuration file into self.properties. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">configFilePath</td><td>Path to an ini-style configuration file. The contents of the [<a class="el" href="classDirectoryTools_1_1DirectoryTools.html" title="Class containing methods for queryin an LDAP server. ">DirectoryTools</a>] section are loaded into self.properties. All other sections are ignored. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

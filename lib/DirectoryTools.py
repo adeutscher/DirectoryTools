@@ -4,10 +4,13 @@ __version__ = 0.1
 import ldap,re,sys,traceback
 from time import time
 from datetime import datetime
+import ConfigParser
+
 
 import DirectoryToolsIndexes as index
 import DirectoryToolsSchemas as schema
 import DirectoryToolsExceptions as exceptions
+
 
 # For Utilities:
 import base64
@@ -51,6 +54,8 @@ class DirectoryTools:
     ## Debug level 3
     DEBUG_LEVEL_EXTREME = 3
     
+    CONFIG_SECTION_HEADER='DirectoryTools'
+    
     ## Handle used to search the directory server.
     proxyHandle = False
     
@@ -58,7 +63,7 @@ class DirectoryTools:
     cache = {}
     
 
-    def __init__(self,properties=False,template='openldap'):
+    def __init__(self,properties=False,template='openldap',configFile=False):
         '''
         Initializes the DirectoryTools object.
         
@@ -69,6 +74,13 @@ class DirectoryTools:
         
         ## Dictionary of property values.
         self.properties = self.defaultProperties
+        
+        if configFile:
+            try:
+                self.loadConfigFile(configFile)
+            except:
+                print "Unable to load configuration file '{0}'".format(configFile);
+                exit(1);
         
         if template:
             try: 
@@ -524,6 +536,20 @@ class DirectoryTools:
         # Return the cache id that we are using. A recursive function must use the same cache Id.
         return tuple([category,cacheId])
 
+    def loadConfigFile(self,configFilePath):
+        '''
+        Loads the contents of a configuration file into self.properties.
+        
+        args:
+            configFilePath: Path to an ini-style configuration file. The contents of the [DirectoryTools] section are loaded into self.properties. All other sections are ignored.
+        '''
+        
+        parser = ConfigParser.ConfigParser()
+        parser.read(configFilePath)
+        
+        if self.CONFIG_SECTION_HEADER in parser.sections():
+            for option in parser.options(self.CONFIG_SECTION_HEADER):
+                self.setProperty(option,parser.get(self.CONFIG_SECTION_HEADER,option))
     
     def isObjectGroup(self,groupDN):
         '''

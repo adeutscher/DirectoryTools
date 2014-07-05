@@ -1003,7 +1003,12 @@ class DirectoryTools:
         Returns:
             None
         '''
-        self.printDebug("Setting the '{0}' property to the value of '{1}' (Old value: '{2}')".format(key,value,self.getProperty(key)),self.DEBUG_LEVEL_MINOR)
+        
+        if key in self.properties:
+            self.printDebug("Setting the '{0}' property to the value of '{1}' (Old value: '{2}')".format(key,value,self.getProperty(key)),self.DEBUG_LEVEL_MINOR)
+        else:
+            self.printDebug("Setting the '{0}' property to the value of '{1}'".format(key,value),self.DEBUG_LEVEL_MINOR)
+        
         self.properties[key] = value
         
     

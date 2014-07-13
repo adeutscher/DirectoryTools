@@ -233,8 +233,8 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#aed1e97a70f476def47ea3ce887f67a9f">DEBUG_LEVEL_EXTREME</a> = 3</td></tr>
 <tr class="memdesc:aed1e97a70f476def47ea3ce887f67a9f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Debug level 3. <br/></td></tr>
 <tr class="separator:aed1e97a70f476def47ea3ce887f67a9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3d4cee2607138a4541b024551f321ed4"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a3d4cee2607138a4541b024551f321ed4"></a>
-string&#160;</td><td class="memItemRight" valign="bottom"><b>CONFIG_SECTION_HEADER</b> = '<a class="el" href="classDirectoryTools_1_1DirectoryTools.html">DirectoryTools</a>'</td></tr>
+<tr class="memitem:a3d4cee2607138a4541b024551f321ed4"><td class="memItemLeft" align="right" valign="top">string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#a3d4cee2607138a4541b024551f321ed4">CONFIG_SECTION_HEADER</a> = '<a class="el" href="classDirectoryTools_1_1DirectoryTools.html">DirectoryTools</a>'</td></tr>
+<tr class="memdesc:a3d4cee2607138a4541b024551f321ed4"><td class="mdescLeft">&#160;</td><td class="mdescRight">The name of the .INI file section that configuration entries are to be placed under.  <a href="#a3d4cee2607138a4541b024551f321ed4">More...</a><br/></td></tr>
 <tr class="separator:a3d4cee2607138a4541b024551f321ed4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3bcdfa100394a7fc9a38ace53bc2027e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDirectoryTools_1_1DirectoryTools.html#a3bcdfa100394a7fc9a38ace53bc2027e">proxyHandle</a> = False</td></tr>
 <tr class="memdesc:a3bcdfa100394a7fc9a38ace53bc2027e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Handle used to search the directory server.  <a href="#a3bcdfa100394a7fc9a38ace53bc2027e">More...</a><br/></td></tr>
@@ -293,6 +293,8 @@ string&#160;</td><td class="memItemRight" valign="bottom"><b>CONFIG_SECTION_HEAD
   <table class="params">
     <tr><td class="paramname">properties</td><td>Dictionary of properties. Can be updated through setProperties or updateProperties. </td></tr>
     <tr><td class="paramname">template</td><td>String describing a template schema that defines common properties given LDAP server implementation. If the schema is not found, then the program will exit. </td></tr>
+    <tr><td class="paramname">configFile</td><td>Optional path to a configuration file. </td></tr>
+    <tr><td class="paramname">enableStdOut</td><td>Boolean flag to enable basic output through stdOut. For more advanced output methods, add extra handlers from the logging module to <code>self.logger</code>. </td></tr>
   </table>
   </dd>
 </dl>
@@ -1687,6 +1689,28 @@ None </dd></dl>
 </div><div class="memdoc">
 
 <p>Cache for reducing the number of queries that need to be run, especially common ones like resolving a DN. </p>
+
+</div>
+</div>
+<a class="anchor" id="a3d4cee2607138a4541b024551f321ed4"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">string DirectoryTools.DirectoryTools.CONFIG_SECTION_HEADER = '<a class="el" href="classDirectoryTools_1_1DirectoryTools.html">DirectoryTools</a>'</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The name of the .INI file section that configuration entries are to be placed under. </p>
 
 </div>
 </div>

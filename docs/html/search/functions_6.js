@@ -1,6 +1,7 @@
 var searchData=
 [
   ['getactivedirectorypassword',['getActiveDirectoryPassword',['../classDirectoryTools_1_1Utilities.html#a3becf0a32bc0dd45a78b20040d0bed48',1,'DirectoryTools::Utilities']]],
+  ['getflagvalue',['getFlagValue',['../classDirectoryTools_1_1UserAccountControlManager.html#a4f57d3289833756ee53c0b9fdf767ba4',1,'DirectoryTools::UserAccountControlManager']]],
   ['getgroupbasedn',['getGroupBaseDN',['../classDirectoryTools_1_1DirectoryTools.html#aa73c170df5242e599f5603c272e5c039',1,'DirectoryTools::DirectoryTools']]],
   ['getgroupmembers',['getGroupMembers',['../classDirectoryTools_1_1DirectoryTools.html#aef6becb9278a0fe67d3d86f9e0defdbc',1,'DirectoryTools::DirectoryTools']]],
   ['gethandle',['getHandle',['../classDirectoryTools_1_1DirectoryTools.html#a18df391883f2f84f0e816c9fe3a007ca',1,'DirectoryTools::DirectoryTools']]],
@@ -12,6 +13,7 @@ var searchData=
   ['getproperty',['getProperty',['../classDirectoryTools_1_1DirectoryTools.html#a64e2376c09a66321d16543871a4b9a46',1,'DirectoryTools::DirectoryTools']]],
   ['getproxyhandle',['getProxyHandle',['../classDirectoryTools_1_1DirectoryTools.html#a696d9e143a2e01ae428696620f85613a',1,'DirectoryTools::DirectoryTools']]],
   ['getsingleattribute',['getSingleAttribute',['../classDirectoryTools_1_1DirectoryTools.html#aaed35e8f094a0ed774f11622d6430b81',1,'DirectoryTools::DirectoryTools']]],
+  ['getsum',['getSum',['../classDirectoryTools_1_1UserAccountControlManager.html#a73e9c90c6e7b0ff457d4f4a2f939d9e0',1,'DirectoryTools::UserAccountControlManager']]],
   ['getunixtimestampdiff',['getUnixTimestampDiff',['../classDirectoryTools_1_1Utilities.html#a996674a3f810bc73adcbc7a28419ced2',1,'DirectoryTools::Utilities']]],
   ['getunixtimestampfromnt',['getUnixTimestampFromNT',['../classDirectoryTools_1_1Utilities.html#a0433754ef00995e2a62c585c15b7096e',1,'DirectoryTools::Utilities']]],
   ['getuserbasedn',['getUserBaseDN',['../classDirectoryTools_1_1DirectoryTools.html#ad44bd066ea150193a568e24fc960c4da',1,'DirectoryTools::DirectoryTools']]],

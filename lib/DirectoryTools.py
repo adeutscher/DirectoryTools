@@ -61,6 +61,7 @@ class DirectoryTools:
     ## Debug level 3
     DEBUG_LEVEL_EXTREME = 3
     
+    ## The name of the .INI file section that configuration entries are to be placed under.
     CONFIG_SECTION_HEADER='DirectoryTools'
     
     ## Handle used to search the directory server.
@@ -77,6 +78,8 @@ class DirectoryTools:
         Args:
             properties: Dictionary of properties. Can be updated through setProperties or updateProperties.
             template: String describing a template schema that defines common properties given LDAP server implementation. If the schema is not found, then the program will exit.
+            configFile: Optional path to a configuration file.
+            enableStdOut: Boolean flag to enable basic output through stdOut. For more advanced output methods, add extra handlers from the logging module to `self.logger`.
         '''
         
         ## Logging object to print debug output.

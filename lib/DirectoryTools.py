@@ -245,7 +245,7 @@ class DirectoryTools:
                     self.printDebug("Adding object '{0}' to list (Passed Filter).".format(member), DEBUG_LEVEL_MAJOR)
                     memberList.append(member)
                 
-                if self.getProperty(index.NESTED_GROUPS) and (not (depth >= self.getProperty(index.MAX_DEPTH)) and (notself.getProperty(index.MAX_DEPTH) < 0)) and self.isObjectGroup(member):
+                if self.getProperty(index.NESTED_GROUPS) and (not (depth >= self.getProperty(index.MAX_DEPTH)) and (not self.getProperty(index.MAX_DEPTH) < 0)) and self.isObjectGroup(member):
                     # If this section is being executed we have confirmed three things: 
                     # * We want to search in nested groups.
                     # * We have not yet exceeded the maximum search depth.

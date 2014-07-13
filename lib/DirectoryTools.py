@@ -29,7 +29,7 @@ LOG_LEVEL_CRITICAL = 50
 
 class DirectoryTools:
     """
-    Class containing methods for queryin an LDAP server.
+    Class containing methods for querying an LDAP server.
     """
     
     ## Default properties.

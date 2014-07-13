@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['originalexception',['originalException',['../classDirectoryToolsExceptions_1_1ExceptionWrapper.html#aea6bd794d357a6517fad4b588c16f6ac',1,'DirectoryToolsExceptions::ExceptionWrapper']]]
+  ['message',['message',['../classDirectoryToolsExceptions_1_1ExceededMaxDepthException.html#a1639fc6b71d0e054adc4646383302a0d',1,'DirectoryToolsExceptions::ExceededMaxDepthException']]]
 ];

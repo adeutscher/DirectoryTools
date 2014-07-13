@@ -1257,31 +1257,21 @@ class UserAccountControlManager:
         ## A list of value keys for enabled flags.
         self.enabledFlags = []
         
-    def sumUAC(self,uacList=[],extraValueList=[]):
+    def disableFlag(self,uacFlag):
         '''
-        Compile UAC flags into a value.
+        Disables a UAC flag.
         
         Args:
-            uacList: A list of UAC flags.
-            extraValueList: A list of integer values to add, in case there were some undocumented flags that I missed.
+            uacFlag: UAC flag key to remove from the list of enabled keys.
             
         Returns:
-            An integer made of the sum of all activated UAC flags.
+            True of the value was unset, False if it wasn't there to begin with.
         '''
-        
-        flagSum = 0
-        
-        for i in self.enabledFlags:
-            try:
-                flagSum += int(self.uacFlagKeyValues[i])
-            except KeyError:
-                pass
-        
-        # Add any extra values.
-        for i in extraValueList:
-            flagSum += i
+        if uacFlag in self.enabledFlags:
+            self.enabledFlags.remove(uacFlag)
+            return True
             
-        return flagSum
+        return False
         
     def enableFlag(self,uacFlag):
         '''
@@ -1298,21 +1288,71 @@ class UserAccountControlManager:
             self.enabledFlags.append(uacFlag)
             return True
         else:
-            print self.enabledFlags
             return False
             
-    def disableFlag(self,uacFlag):
+    def getFlagValue(self,uacFlag):
         '''
-        Disables a UAC flag.
+        Get the value of the specified flag.
         
         Args:
-            uacFlag: UAC flag key to remove from the list of enabled keys.
+        uacFlag: The flag that we want to get the value for.
+        
+        Returns:
+            The number that represents the requested UAC flag. If an invalid index is given, then 0 is returned.
+        '''
+        
+        try:
+            return self.uacFlagKeyValues[uacFlag]
+        except KeyError:
+            return 0
+            
+    def getSum(self,extraUacKeys=[],extraUacValues=[]):
+        '''
+        Compile UAC flags into a value.
+        
+        Args:
+            extraUacKeys: A list of UAC keys to be added to the sum in addition to the enabled flags.
+            extraUacValues: A list of integer values to add, in case there were some undocumented flags that I missed.
             
         Returns:
-            True of the value was unset, False if it wasn't there to begin with.
+            An integer made of the sum of all activated UAC flags.
         '''
-        if uacFlag in self.enabledFlags:
-            self.enabledFlags.remove(uacFlag)
-            return True
+        
+        flagSum = 0
+        
+        for i in self.enabledFlags:
+            try:
+                flagSum += int(self.uacFlagKeyValues[i])
+            except KeyError:
+                pass
+        
+        # Add extra flags.
+        for uacKey in extraUacKeys:
+            flagSum += self.getUacFlagValue(uacKey)
+        
+        # Add any extra values.
+        for uacValue in extraValueList:
+            flagSum += uacValue
             
-        return False
+        return flagSum
+            
+    def isFlagEnabled(self,uacFlag):
+        '''
+        Checks to see if a UAC flag has been enabled.
+        
+        Args:
+            uacFlag: UAC flag that we are checking for.
+        '''
+            
+    def sumUac(self,extraUacKeys,extraUacValues):
+        '''
+        Old name of getSum, kept around as an alias.
+        
+        Args:
+            extraUacKeys: A list of UAC keys to be added to the sum in addition to the enabled flags.
+            extraUacValues: A list of integer values to add, in case there were some undocumented flags that I missed.
+            
+        Returns:
+            An integer made of the sum of all activated UAC flags.
+        '''
+        return self.getSum(extraUacKeys,extraUacValues)

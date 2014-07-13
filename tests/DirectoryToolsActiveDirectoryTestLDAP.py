@@ -51,11 +51,11 @@ class DirectoryToolsActiveDirectoryTestLDAP(common,unittest.TestCase):
             indexes.USE_SSL:False,
             indexes.PROXY_USER:'CN=Administrator,CN=Users,DC=sandbox,DC=lan',
             indexes.PROXY_PASSWORD:'MyAdminPassword1!',
-            indexes.DEBUG_LEVEL:0
+            indexes.LOG_LEVEL:DirectoryTools.LOG_LEVEL_CRITICAL,
         }
 
         ## DirectoryTools object to test with.
-        self.auth = DirectoryTools.DirectoryTools(properties,'ad')
+        self.auth = DirectoryTools.DirectoryTools(properties,'ad',enableStdOut=True)
     
         # Defining group values.
         

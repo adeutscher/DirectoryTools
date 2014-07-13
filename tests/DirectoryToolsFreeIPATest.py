@@ -50,12 +50,12 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
             indexes.USE_SSL:False,
             indexes.PROXY_USER:'uid=admin,cn=users,cn=accounts,dc=freeipa,dc=lan',
             indexes.PROXY_PASSWORD:'MyAdminPassword1!',
-            indexes.DEBUG_LEVEL:3,
+            indexes.LOG_LEVEL:DirectoryTools.LOG_LEVEL_CRITICAL,
             #indexes.PROXY_IS_ANONYMOUS:True,
         }
 
         ## DirectoryTools object to run tests with.
-        self.auth = DirectoryTools.DirectoryTools(properties,'freeipa')
+        self.auth = DirectoryTools.DirectoryTools(properties,'freeipa',enableStdOut=True)
     
         # Defining group values.
         ## Name of the administrator group.

@@ -50,11 +50,11 @@ class DirectoryToolsOpenLDAPTest(common,unittest.TestCase):
             indexes.USE_SSL:False,
             indexes.PROXY_USER:'cn=admin,dc=openldap,dc=lan',
             indexes.PROXY_PASSWORD:'MyAdminPassword1!',
-            indexes.DEBUG_LEVEL:3
+            indexes.LOG_LEVEL:DirectoryTools.LOG_LEVEL_CRITICAL,
         }
 
         ## DirectoryTools object to run tests with.
-        self.auth = DirectoryTools.DirectoryTools(properties,'openldap')
+        self.auth = DirectoryTools.DirectoryTools(properties,'openldap',enableStdOut=True)
     
         # Defining group values.
         ## Name of the administrator group.

@@ -5,12 +5,11 @@ import ldap,re,sys,traceback
 from time import time
 from datetime import datetime
 import ConfigParser
-
+import logging
 
 import DirectoryToolsIndexes as index
 import DirectoryToolsSchemas as schema
 import DirectoryToolsExceptions as exceptions
-
 
 # For Utilities:
 import base64
@@ -20,6 +19,14 @@ DEBUG_LEVEL_MINOR = 1
 DEBUG_LEVEL_MAJOR = 2
 DEBUG_LEVEL_EXTREME = 3
 
+LOG_LEVEL_NONE = -1
+LOG_LEVEL_NOTSET = 0
+LOG_LEVEL_DEBUG = 10
+LOG_LEVEL_INFO = 20
+LOG_LEVEL_WARNING = 30
+LOG_LEVEL_ERROR = 40
+LOG_LEVEL_CRITICAL = 50
+
 class DirectoryTools:
     """
     Class containing methods for queryin an LDAP server.
@@ -27,7 +34,7 @@ class DirectoryTools:
     
     ## Default properties.
     defaultProperties = {
-        index.DEBUG_LEVEL:0,
+        index.LOG_LEVEL:-1,
         index.SERVER_ADDRESS:'',
         index.SERVER_PORT:389,
         index.USE_SSL:False,
@@ -63,7 +70,7 @@ class DirectoryTools:
     cache = {}
     
 
-    def __init__(self,properties=False,template='openldap',configFile=False):
+    def __init__(self,properties=False,template='openldap',configFile=False,enableStdOut=False):
         '''
         Initializes the DirectoryTools object.
         
@@ -71,6 +78,15 @@ class DirectoryTools:
             properties: Dictionary of properties. Can be updated through setProperties or updateProperties.
             template: String describing a template schema that defines common properties given LDAP server implementation. If the schema is not found, then the program will exit.
         '''
+        
+        ## Logging object to print debug output.
+        self.logger = logging.getLogger()
+        self.logger.handlers = []
+        self.logger.setLevel(logging.NOTSET)
+        if enableStdOut:
+            self.enableStdOut()
+        else:
+            self.logger.addHandler(logging.NullHandler())
         
         ## Dictionary of property values.
         self.properties = self.defaultProperties
@@ -108,7 +124,9 @@ class DirectoryTools:
             True if the user successfully authenticates, false if there is an error.
         '''
         
-        self.printDebug("Attempting to authenticate user '{0}'.".format(userName), DEBUG_LEVEL_MINOR)
+        self.printDebug("Attempting to authenticate user '{0}'.".format(userName), LOG_LEVEL_WARNING)
+        self.printDebug("INFO", LOG_LEVEL_INFO)
+        self.printDebug("DEBUG", LOG_LEVEL_DEBUG)
 
         if userNameIsDN:
             # The username has been provided in DN form.
@@ -120,7 +138,7 @@ class DirectoryTools:
             
             if not userDN:
                 # Don't bother authenticating if the user doesn't exist.
-                self.printDebug("User '{0}' cannot be found.".format(userName), DEBUG_LEVEL_MINOR)
+                self.printDebug("User '{0}' cannot be found.".format(userName), LOG_LEVEL_WARNING)
                 return False
         
         handle = self.getHandle()
@@ -128,12 +146,27 @@ class DirectoryTools:
         try:
             # Attempt to do a simple bind. If anything goes wrong, we'll be thrown to our 'except'.
             result = handle.simple_bind_s(userDN,password)
-            self.printDebug("Successfully authenticated user '{0}'.".format(userName), DEBUG_LEVEL_MINOR)
+            self.printDebug("Successfully authenticated user '{0}'.".format(userName), LOG_LEVEL_WARNING)
             return True
-        except ldap.LDAPError:
-            if(self.getProperty(index.DEBUG_LEVEL) >= DEBUG_LEVEL_EXTREME):
+        except ldap.LDAPError as e:
+            
+            logLevel = self.getProperty(index.LOG_LEVEL)
+            
+            if logLevel != LOG_LEVEL_NONE and logLevel >= LOG_LEVEL_CRITICAL:
                 traceback.print_exc(file=sys.stdout)
+            self.printDebug("LDAP Error: {0}".format(e),LOG_LEVEL_CRITICAL)
+            
             return False
+            
+    def enableStdOut(self):
+        '''
+        DirectoryTools uses Python's logging module for debug output. By default, printing to stdout is not enabled.
+        
+        This method sets up a standard handler for printing to stdout for those who aren't familiar with the logging module.
+        '''
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(logging.Formatter(fmt="%(levelname)s %(message)s"))
+        self.logger.addHandler(sh)
             
     def flushCaches(self,category=False,cacheId=False):
         '''
@@ -202,7 +235,7 @@ class DirectoryTools:
             # We want to confirm that the group exists and get its Distinguished Name.
             groupDN = self.resolveGroupDN(groupName,self.getProperty(index.GROUP_UID_ATTRIBUTE))
             if not groupDN:
-                self.printDebug("Could not locate group: {0}".format(groupName),DEBUG_LEVEL_MAJOR)
+                self.printDebug("Could not locate group: {0}".format(groupName),LOG_LEVEL_ERROR)
                 return []
         else:
             # Group name is already a DN.
@@ -211,9 +244,9 @@ class DirectoryTools:
         # Making sure that we have not already searched this group.
         if groupName not in self.cache[cacheCategory][cacheId]:
                 self.cache[cacheCategory][cacheId][groupName] = 1
-                self.printDebug("Getting members of group '{0}'.".format(groupName),DEBUG_LEVEL_MAJOR)
+                self.printDebug("Getting members of group '{0}'.".format(groupName),LOG_LEVEL_INFO)
         else:
-            self.printDebug("Skipping already searched group: {0}".format(groupName), DEBUG_LEVEL_MAJOR)
+            self.printDebug("Skipping already searched group: {0}".format(groupName), LOG_LEVEL_DEBUG)
             return []
         
         memberList = []
@@ -227,7 +260,7 @@ class DirectoryTools:
         #query = '(&(objectClass=%s)(%s=%s))' % tuple([self.getProperty(index.GROUP_CLASS),groupIdentifier,groupName])
         #self.printDebug("Searching for member users in group '%s'. Query: %s: " % tuple([groupName,query]),DEBUG_LEVEL_MAJOR)
         query = '(%s=%s)'
-        self.printDebug("Searching for members in group '{0}'.".format(groupName),DEBUG_LEVEL_MAJOR)
+        self.printDebug("Searching for members in group '{0}'.".format(groupName),LOG_LEVEL_INFO)
 
         members = self.getMultiAttribute(groupDN,self.getProperty(index.MEMBER_ATTRIBUTE))
         for member in members:
@@ -238,11 +271,11 @@ class DirectoryTools:
                 
                 
                 if not objectClassFilter:
-                    self.printDebug("Adding object '{0}' to list (No Filter).".format(member), DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Adding object '{0}' to list (No Filter).".format(member), LOG_LEVEL_DEBUG)
                     memberList.append(member)
                 elif objectClassFilter and self.isObjectOfClass(member,objectClassFilter):
                     # Either we are not filtering by group, or the object at this DN is of the class we want to filter by.
-                    self.printDebug("Adding object '{0}' to list (Passed Filter).".format(member), DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Adding object '{0}' to list (Passed Filter).".format(member), LOG_LEVEL_DEBUG)
                     memberList.append(member)
                 
                 if self.getProperty(index.NESTED_GROUPS) and (not (depth >= self.getProperty(index.MAX_DEPTH)) and (not self.getProperty(index.MAX_DEPTH) < 0)) and self.isObjectGroup(member):
@@ -251,7 +284,7 @@ class DirectoryTools:
                     # * We have not yet exceeded the maximum search depth.
                     # * The object is actually a group (kind of important!).
                     
-                    self.printDebug("Searching within nested group '{0}'".format(member), DEBUG_LEVEL_MAJOR)
+                    self.printDebug("Searching within nested group '{0}'".format(member), LOG_LEVEL_INFO)
                     
                     try:
                         memberList.extend(
@@ -271,7 +304,7 @@ class DirectoryTools:
         
         # Begin top-level processing. The following code should only be processed if we're in the top call of this method.
             
-        self.printDebug("Finished gathering members of group '{0}'. Formatting results.".format(groupName),DEBUG_LEVEL_MAJOR)
+        self.printDebug("Finished gathering members of group '{0}'. Formatting results.".format(groupName),LOG_LEVEL_DEBUG)
         
         # We want to return a deduped listing of members.
         if returnMembersAsDN and not self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
@@ -308,14 +341,14 @@ class DirectoryTools:
             protocol = ('ldap','ldaps')[self.getProperty(index.USE_SSL)]
             
             uri = '{0}://{1}:{2}'.format(protocol,self.getProperty(index.SERVER_ADDRESS),self.getProperty(index.SERVER_PORT))
-            self.printDebug("Connection URI: {0}".format(uri),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Connection URI: {0}".format(uri),LOG_LEVEL_DEBUG)
             
             connectionProperties = self.getProperty(index.LDAP_PROPERTIES)
             
             connection = ldap.initialize(uri)
             
             for i in connectionProperties:
-                self.printDebug('Applying connection property \'{0}\' to connection. Value: \'{1}\''.format(i,connectionProperties[i]),self.DEBUG_LEVEL_MAJOR)
+                self.printDebug('Applying connection property \'{0}\' to connection. Value: \'{1}\''.format(i,connectionProperties[i]),LOG_LEVEL_DEBUG)
                 connection.set_option(i,connectionProperties[i])
             
             return connection
@@ -389,20 +422,20 @@ class DirectoryTools:
         
         try:
             if printDebugMessage:
-                self.printDebug("Fetching property '{0}'".format(key),self.DEBUG_LEVEL_MINOR)
+                self.printDebug("Fetching property '{0}'".format(key),LOG_LEVEL_DEBUG)
             return self.properties[key]
         except KeyError as e:
-            self.printDebug("Could not find key '{0}' in properties.".format(key),self.DEBUG_LEVEL_MINOR)
+            self.printDebug("Could not find key '{0}' in properties.".format(key),LOG_LEVEL_DEBUG)
             if defaultOverride is not None:
-                self.printDebug("Using override default: {0}".format(defaultOverride),self.DEBUG_LEVEL_MINOR)
+                self.printDebug("Using override default: {0}".format(defaultOverride),LOG_LEVEL_DEBUG)
                 return defaultOverride
             elif useDefault:
                 try:
-                    self.printDebug("Searching default properties...",self.DEBUG_LEVEL_MINOR)
+                    self.printDebug("Searching default properties...",self.LOG_LEVEL_DEBUG)
                     return self.defaultProperties[key]
                 except KeyError as e:
                     # The property *still* wasn't found in the default properties.
-                    self.printDebug("Could not find key '{0}' in default properties".format(key),self.DEBUG_LEVEL_MINOR)
+                    self.printDebug("Could not find key '{0}' in default properties".format(key),LOG_LEVEL_DEBUG)
                     raise exceptions.PropertyNotFoundException(key=key,triedDefault=True)
             else:
                 # No override, and not using the default.
@@ -439,9 +472,9 @@ class DirectoryTools:
                 else:
                     raise exceptions.ProxyFailedException(originalException=e)
             
-            self.printDebug("Successfully created proxy handle.",DEBUG_LEVEL_EXTREME)
+            self.printDebug("Successfully created proxy handle.",LOG_LEVEL_DEBUG)
         else:
-            self.printDebug("Returning cached proxy handle.",DEBUG_LEVEL_EXTREME)
+            self.printDebug("Returning cached proxy handle.",LOG_LEVEL_DEBUG)
         return self.proxyHandle
 
     def getSingleAttribute(self,dn,attribute):
@@ -520,18 +553,18 @@ class DirectoryTools:
         # Make sure that the category is initialized.
         # Do not overwrite an existing dictionary, but correct any non-dictionary that has snuck in.
         if category not in self.cache or type(self.cache[category]) is not dict:
-            self.printDebug("Creating cache category '{0}'".format(category),self.DEBUG_LEVEL_EXTREME)
+            self.printDebug("Creating cache category '{0}'".format(category),LOG_LEVEL_DEBUG)
             self.cache[category] = {}
         else:
-            self.printDebug("Cache category '{0}' already exists.".format(category),self.DEBUG_LEVEL_EXTREME)
+            self.printDebug("Cache category '{0}' already exists.".format(category),LOG_LEVEL_DEBUG)
 
         # Make sure that the cache ID of the category is initialized.
         # Do not overwrite an existing dictionary, but correct any non-dictionary that has snuck in.
         if cacheId not in self.cache[category] or type(self.cache[category][cacheId]) is not dict:
-            self.printDebug("Creating '{0}' cache with Id of '{1}'".format(category,cacheId),self.DEBUG_LEVEL_EXTREME)
+            self.printDebug("Creating '{0}' cache with Id of '{1}'".format(category,cacheId),LOG_LEVEL_DEBUG)
             self.cache[category][cacheId] = {}
         else:
-            self.printDebug("'{0}' cache with id of '{1}' already exists.".format(category,cacheId),self.DEBUG_LEVEL_EXTREME)
+            self.printDebug("'{0}' cache with id of '{1}' already exists.".format(category,cacheId),LOG_LEVEL_DEBUG)
         
         # Return the cache id that we are using. A recursive function must use the same cache Id.
         return tuple([category,cacheId])
@@ -592,11 +625,11 @@ class DirectoryTools:
             
         cacheCategory,cacheId = cacheTuple
         
-        self.printDebug("Searching for user '{0}' in group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
+        self.printDebug("Searching for user '{0}' in group '{1}'".format(objectName,groupName),LOG_LEVEL_INFO)
         
         if groupName in self.cache[cacheCategory][cacheId]:
             # We have already searched in this group.
-            self.printDebug("Skipping group '{0}'. Already searched.".format(groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
+            self.printDebug("Skipping group '{0}'. Already searched.".format(groupName),LOG_LEVEL_INFO)
             return False
         self.cache[cacheCategory][cacheId][groupName] = 1
         
@@ -612,7 +645,7 @@ class DirectoryTools:
             groupDN = self.resolveGroupDN(groupName)
             if not groupDN:
                 # Can't find group, no point in continuing.
-                self.printDebug("Cannot locate group '{0}' in order to search for member '{1}' within it. Returning False.".format(groupName,objectName),index.DEBUG_LEVEL_MAJOR,spaces=depth)
+                self.printDebug("Cannot locate group '{0}' in order to search for member '{1}' within it. Returning False.".format(groupName,objectName),LOG_LEVEL_ERROR)
                 return False
         
         if not objectNameIsDN and self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
@@ -642,7 +675,7 @@ class DirectoryTools:
             if searchName in members:
                 # If we are using a POSIX group, we can trust that the item is of the class we want.
                 # If members are DNs, then we have resolved the UID to an existing object.
-                self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
+                self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),LOG_LEVEL_INFO)
                 return True
         
         else:
@@ -654,7 +687,7 @@ class DirectoryTools:
                 # Cycle through group results.
                 
                 if member == searchName:
-                    self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),DEBUG_LEVEL_MAJOR,spaces=depth)
+                    self.printDebug("Verified object '{0}' as a member of group '{1}'".format(objectName,groupName),LOG_LEVEL_INFO)
                     return True
                 elif self.getProperty(index.NESTED_GROUPS) and self.isObjectGroup(member):
                     # We have stated that we want to search through nested groups.
@@ -662,12 +695,12 @@ class DirectoryTools:
                     
                     # But first, we want to search through other direct memberships
                     # to make sure that the desired property is not here.
-                    self.printDebug("Observed group '{0}'. Will search through it if no direct matches are found in this group.".format(member),DEBUG_LEVEL_MAJOR,spaces=depth)
+                    self.printDebug("Observed group '{0}'. Will search through it if no direct matches are found in this group.".format(member),LOG_LEVEL_INFO)
                     nestedGroupList.append(member)
                 else:
                     # If the if statement is not triggered, then the object is a object.
                     # Any object type other than the group is irrelevant, placing the else statement for the sake of verbosity.
-                    self.printDebug("Observed non-matching object '{0}'".format(member),DEBUG_LEVEL_MAJOR,spaces=depth)
+                    self.printDebug("Observed non-matching object '{0}'".format(member),LOG_LEVEL_DEBUG)
         
             # We have completed cycling through the memberList variable for users, and have not found a matching user.
             for nestedGroup in nestedGroupList:
@@ -697,25 +730,25 @@ class DirectoryTools:
         cacheTuple = self.initCache(cacheCategory,objectClass)
         cacheCategory,cacheId = cacheTuple
         
-        self.printDebug("Checking whether the object at '{0}' is of class '{1}'".format(objectDN,cacheId),DEBUG_LEVEL_MAJOR)
+        self.printDebug("Checking whether the object at '{0}' is of class '{1}'".format(objectDN,cacheId),LOG_LEVEL_INFO)
         
         # Attempt to find the object in the cache.
         if objectDN in self.cache[cacheCategory][cacheId]:
             if self.cache[cacheCategory][cacheId][objectDN]:
-                self.printDebug("Verified object as being of class '{0}' using cache.".format(cacheId),DEBUG_LEVEL_MAJOR)
+                self.printDebug("Verified object as being of class '{0}' using cache.".format(cacheId),LOG_LEVEL_DEBUG)
                 return True
             else:
-                self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),DEBUG_LEVEL_MAJOR)
+                self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),LOG_LEVEL_DEBUG)
                 return False
             
         classes = self.getMultiAttribute(objectDN,'objectClass')
         if objectClass in classes:
             self.cache[cacheCategory][cacheId][objectDN] = True
-            self.printDebug("Verified object as being of class '{0}' using cache.".format(cacheId),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Verified object as being of class '{0}' using cache.".format(cacheId),LOG_LEVEL_DEBUG)
             return True
         else:
             self.cache[cacheCategory][cacheId][objectDN] = False
-            self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Cache reports that we could not verify object as being of class '{0}'.".format(cacheId),LOG_LEVEL_DEBUG)
             return False
 
     def isObjectUser(self,userDN):
@@ -764,7 +797,7 @@ class DirectoryTools:
             i = i + 1 
         return returnValue
 
-    def printDebug(self,message,secrecyLevel=100,spaces=0):
+    def printDebug(self,message,secrecyLevel=100):
         '''
         Prints a debug message.
         
@@ -772,14 +805,15 @@ class DirectoryTools:
         
         Args:
             message: The message to print.
-            secrecyLevel: The authorization required to print. The DEBUG_LEVEL property must be equal to or greater than this secrecy level to print the message.
-            spaces: The number of spaces to indent the debug string by.
+            secrecyLevel: The authorization required to print. The LOG_LEVEL property must be equal to or greater than this secrecy level to print the message.
             
         Returns:
             True if the message was sent, False otherwise.
         '''
-        if self.getProperty(index.DEBUG_LEVEL,printDebugMessage=False) >= int(secrecyLevel):
-            print "{0}DEBUG({1}): {2}".format(self.makeSpaces(spaces),secrecyLevel,message)
+        
+        logLevel = self.getProperty(index.LOG_LEVEL,printDebugMessage=False)
+        if logLevel != LOG_LEVEL_NONE and logLevel >= int(secrecyLevel):
+            self.logger.log(secrecyLevel,message)
             return True
         return False
     
@@ -802,14 +836,15 @@ class DirectoryTools:
 
         returnList = []
 
-        self.printDebug("Executing LDAP search.",DEBUG_LEVEL_EXTREME)
-        self.printDebug("    Filter: {0}".format(str(query)),DEBUG_LEVEL_EXTREME)
-        self.printDebug("    Base: {0}".format(str(base)),DEBUG_LEVEL_EXTREME)
+        self.printDebug("Executing LDAP search.",LOG_LEVEL_DEBUG)
+        self.printDebug("    Filter: {0}".format(str(query)),LOG_LEVEL_DEBUG)
+        self.printDebug("    Base: {0}".format(str(base)),LOG_LEVEL_DEBUG)
         
         try:        
             results = handle.search_s(base,ldap.SCOPE_SUBTREE,query,attributes)
         except Exception as e:
-            self.printDebug("BAD QUERY",DEBUG_LEVEL_EXTREME)
+            # A bad query becomes a much more important thing to log.
+            self.printDebug("BAD QUERY: {0}".format(str(query)),LOG_LEVEL_CRITICAL)
             raise exceptions.BadQueryException(originalException=e)
         
         for result in results:
@@ -840,7 +875,7 @@ class DirectoryTools:
         if not uidAttribute:
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
         if groupName in self.cache[cacheCategory][cacheId]:
-            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(groupName,self.cache[cacheCategory][cacheId][groupName]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(groupName,self.cache[cacheCategory][cacheId][groupName]),LOG_LEVEL_DEBUG)
             return self.cache[cacheCategory][cacheId][groupName]
         returnValue = self.resolveObjectDN(self.getProperty(index.GROUP_CLASS),uidAttribute,groupName,self.getGroupBaseDN())
     
@@ -875,11 +910,11 @@ class DirectoryTools:
             uidAttribute = self.getProperty(index.GROUP_UID_ATTRIBUTE)
         
         query = "(&(objectClass={0})({1}=*))".format(self.getProperty(index.GROUP_CLASS),self.getProperty(index.GROUP_UID_ATTRIBUTE))
-        self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,groupDN,query), DEBUG_LEVEL_MAJOR)
+        self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,groupDN,query), LOG_LEVEL_DEBUG)
 
         # Checking cached values.
         if groupDN in self.cache[cacheCategory][cacheId]: 
-            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(groupDN,self.cache[cacheCategory][cacheId][groupDN]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(groupDN,self.cache[cacheCategory][cacheId][groupDN]),LOG_LEVEL_DEBUG)
             return self.cache[cacheCategory][cacheId][groupDN]
         
         result = self.query(query,[uidAttribute],groupDN)
@@ -919,7 +954,7 @@ class DirectoryTools:
         if not base:
             base=self.getProperty(index.BASE_DN)
         query = '(&(objectClass={0})({1}={2}))'.format(objectClass,indexAttribute,objectName)
-        self.printDebug("Resolving the DN of an item with the objectClass '{0}': {1}".format(objectClass,query),DEBUG_LEVEL_MAJOR)
+        self.printDebug("Resolving the DN of an item with the objectClass '{0}': {1}".format(objectClass,query),LOG_LEVEL_DEBUG)
         
         result = self.query(query,['distinguishedName'],base=base)
         if len(result) > 0:
@@ -957,7 +992,7 @@ class DirectoryTools:
         if not uidAttribute:
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
         if userName in self.cache[cacheCategory][cacheId]:
-            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(userName,self.cache[cacheCategory][cacheId][userName]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached DN for '{0}'. Value: {1}".format(userName,self.cache[cacheCategory][cacheId][userName]),LOG_LEVEL_DEBUG)
             return self.cache[cacheCategory][cacheId][userName]
         returnValue = self.resolveObjectDN(self.getProperty(index.USER_CLASS),uidAttribute,userName,self.getUserBaseDN())
         
@@ -989,11 +1024,11 @@ class DirectoryTools:
             uidAttribute = self.getProperty(index.USER_UID_ATTRIBUTE)
         
         query = "(&(objectClass={0})({1}=*))".format(self.getProperty(index.USER_CLASS),self.getProperty(index.USER_UID_ATTRIBUTE))
-        self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,userDN,query), DEBUG_LEVEL_MAJOR)
+        self.printDebug("Query for value of '{0}' for DN of '{1}': {2}".format(uidAttribute,userDN,query), LOG_LEVEL_DEBUG)
 
         # Checking cached values.
         if userDN in self.cache[cacheCategory][cacheId]:
-            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(userDN,self.cache[cacheCategory][cacheId][userDN]),DEBUG_LEVEL_MAJOR)
+            self.printDebug("Using cached UID for '{0}'. Value: {1}".format(userDN,self.cache[cacheCategory][cacheId][userDN]),LOG_LEVEL_DEBUG)
             return self.cache[cacheCategory][cacheId][userDN]
         
         result = self.query(query,[uidAttribute],userDN)
@@ -1031,9 +1066,9 @@ class DirectoryTools:
         '''
         
         if key in self.properties:
-            self.printDebug("Setting the '{0}' property to the value of '{1}' (Old value: '{2}')".format(key,value,self.getProperty(key)),self.DEBUG_LEVEL_MINOR)
+            self.printDebug("Setting the '{0}' property to the value of '{1}' (Old value: '{2}')".format(key,value,self.getProperty(key)),LOG_LEVEL_DEBUG)
         else:
-            self.printDebug("Setting the '{0}' property to the value of '{1}'".format(key,value),self.DEBUG_LEVEL_MINOR)
+            self.printDebug("Setting the '{0}' property to the value of '{1}'".format(key,value),LOG_LEVEL_DEBUG)
         
         self.properties[key] = value
         

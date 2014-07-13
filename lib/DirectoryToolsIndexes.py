@@ -1,4 +1,6 @@
-DEBUG_LEVEL = 'general.verbosity'
+LOG_LEVEL = 'log.level'
+LOG_MESSAGE_FORMAT='log.messageformat'
+LOG_TIME_FORMAT='log.dateformat'
 SERVER_ADDRESS = 'server.address'
 SERVER_PORT = 'server.port'
 USE_SSL = 'server.ssl'

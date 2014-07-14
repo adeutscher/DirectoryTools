@@ -585,7 +585,17 @@ class DirectoryTools:
         
         if self.CONFIG_SECTION_HEADER in parser.sections():
             for option in parser.options(self.CONFIG_SECTION_HEADER):
-                self.setProperty(option,parser.get(self.CONFIG_SECTION_HEADER,option))
+                v = parser.get(self.CONFIG_SECTION_HEADER,option)
+                if v.lower() in ['yes','true',"1"]:
+                    # Boolean true.
+                    self.setProperty(option,True)
+                elif v.lower() in ['no','false',"0","nope"]:
+                    # Boolean false.
+                    # Added "nope" for humour.
+                    self.setProperty(option,False)
+                else:
+                    # Standard. Is a string.
+                    self.setProperty(option,v)
     
     def isObjectGroup(self,groupDN):
         '''

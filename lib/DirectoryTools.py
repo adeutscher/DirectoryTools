@@ -585,7 +585,8 @@ class DirectoryTools:
         
         if self.CONFIG_SECTION_HEADER in parser.sections():
             for option in parser.options(self.CONFIG_SECTION_HEADER):
-                v = parser.get(self.CONFIG_SECTION_HEADER,option)
+                # Get our value and strip out quotes.
+                v = re.sub(r'^[\'\"]*|[\'\"]*$','',parser.get(self.CONFIG_SECTION_HEADER,option))
                 if v.lower() in ['yes','true',"1"]:
                     # Boolean true.
                     self.setProperty(option,True)
@@ -593,6 +594,9 @@ class DirectoryTools:
                     # Boolean false.
                     # Added "nope" for humour.
                     self.setProperty(option,False)
+                elif re.match(r'^[1-90]*$',v):
+                    # Is an integer.
+                    self.setProperty(option,int(v))
                 else:
                     # Standard. Is a string.
                     self.setProperty(option,v)

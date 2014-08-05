@@ -151,7 +151,7 @@ class DirectoryTools:
             result = handle.simple_bind_s(userDN,password)
             self.printDebug("Successfully authenticated user '{0}'.".format(userName), LOG_LEVEL_WARNING)
             return True
-        except ldap.LDAPError as e:
+        except ldap.LDAPError, e:
             
             logLevel = self.getProperty(index.LOG_LEVEL)
             
@@ -293,7 +293,7 @@ class DirectoryTools:
                         memberList.extend(
                             self.getGroupMembers(groupName=member,groupNameIsDN=True,returnMembersAsDN=True,objectClassFilter=objectClassFilter,uidAttribute=uidAttribute,depth=(depth+1))
                         )
-                    except exceptions.ExceededMaxDepthException as e:
+                    except exceptions.ExceededMaxDepthException, e:
                         memberList.extend(e.resultItem)
 
             else:
@@ -355,7 +355,7 @@ class DirectoryTools:
                 connection.set_option(i,connectionProperties[i])
             
             return connection
-        except Exception as e:
+        except Exception, e:
             raise exceptions.ConnectionFailedException(originalException=e)
 
     def getMultiAttribute(self,dn,attribute):
@@ -427,7 +427,7 @@ class DirectoryTools:
             if printDebugMessage:
                 self.printDebug("Fetching property '{0}'".format(key),LOG_LEVEL_DEBUG)
             return self.properties[key]
-        except KeyError as e:
+        except KeyError, e:
             self.printDebug("Could not find key '{0}' in properties.".format(key),LOG_LEVEL_DEBUG)
             if defaultOverride is not None:
                 self.printDebug("Using override default: {0}".format(defaultOverride),LOG_LEVEL_DEBUG)
@@ -436,7 +436,7 @@ class DirectoryTools:
                 try:
                     self.printDebug("Searching default properties...",self.LOG_LEVEL_DEBUG)
                     return self.defaultProperties[key]
-                except KeyError as e:
+                except KeyError, e:
                     # The property *still* wasn't found in the default properties.
                     self.printDebug("Could not find key '{0}' in default properties".format(key),LOG_LEVEL_DEBUG)
                     raise exceptions.PropertyNotFoundException(key=key,triedDefault=True)
@@ -465,7 +465,7 @@ class DirectoryTools:
                     # Attempt to bind as the proxy user if we aren't searching anonymously.
                     resultCode = connection.simple_bind_s(self.getProperty(index.PROXY_USER),self.getProperty(index.PROXY_PASSWORD))
                 self.proxyHandle = connection
-            except ldap.LDAPError as e:
+            except ldap.LDAPError, e:
                 # This exception is thrown when the call to connection.simple_bind_s fails.
                 print "Proxy connection failed."
 
@@ -724,7 +724,7 @@ class DirectoryTools:
                 try:
                     if self.isObjectInGroup(objectName,self.resolveGroupUID(nestedGroup),objectNameIsDN=objectNameIsDN,groupNameIsDN=groupNameIsDN,objectIdentifier=objectIdentifier,objectClass=objectClass,objectBase=objectBase,depth=(depth+1),cacheId=cacheId):
                         return True
-                except exceptions.ExceededMaxDepthException as e:
+                except exceptions.ExceededMaxDepthException, e:
                     # Re-raising the exception. I have the suspicion that if I didn't I'd have many superfluous lines in stack traces.
                     # Acknowledging that this means we won't be searching the other items in the list of groups. They would all be of (depth+1), so they would all raise the exception again
                     raise exceptions.ExceededMaxDepthException(message=e.message,depth=e.depth,resultItem=e.resultItem)
@@ -859,7 +859,7 @@ class DirectoryTools:
         
         try:        
             results = handle.search_s(base,ldap.SCOPE_SUBTREE,query,attributes)
-        except Exception as e:
+        except Exception, e:
             # A bad query becomes a much more important thing to log.
             self.printDebug("BAD QUERY: {0}".format(str(query)),LOG_LEVEL_CRITICAL)
             raise exceptions.BadQueryException(originalException=e)

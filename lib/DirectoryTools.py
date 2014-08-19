@@ -92,7 +92,7 @@ class DirectoryTools:
             self.logger.addHandler(logging.NullHandler())
         
         ## Dictionary of property values.
-        self.properties = self.defaultProperties
+        self.properties = self.defaultProperties.copy()
         
         if configFile:
             try:

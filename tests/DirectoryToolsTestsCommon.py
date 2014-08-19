@@ -80,13 +80,13 @@ class DirectoryToolsTestsCommon(object):
         
         print 'Displaying values of the attribute "{0}" for the object "{1}": {2}'.format(targetAttribute,targetDN,attributeList)
         
-    def test_getMultiAttributes(self):
+    def test_getObjectAttributes(self):
         '''
         Need to get multiple types of attributes at the same time.
         '''         
         targetDN = self.auth.resolveGroupDN(self.employeeGroup)
         
-        results = self.auth.getMultiAttributes(targetDN,self.targetAttributes)
+        results = self.auth.getObjectAttributes(targetDN,self.targetAttributes)
         
         print "Results: {0}".format(results)
         

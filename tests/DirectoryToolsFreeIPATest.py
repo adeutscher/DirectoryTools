@@ -87,7 +87,7 @@ class DirectoryToolsFreeIPATest(common,unittest.TestCase):
         
         ## Target attribute for the getMultiAttribute test.
         self.targetAttribute = 'email'
-        ## Target attributes for the getMultiAttributes test.
+        ## Target attributes for the getObjectAttributes test.
         self.targetAttributes = ['objectClass','cn']
         
 if __name__ == '__main__':

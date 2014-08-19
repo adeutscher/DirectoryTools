@@ -83,7 +83,7 @@ class DirectoryToolsOpenLDAPTest(common,unittest.TestCase):
         
         ## Target attribute for the getMultiAttribute test.
         self.targetAttribute = 'email'
-        ## Target attributes for the getMultiAttributes test.
+        ## Target attributes for the getObjectAttributes test.
         self.targetAttributes = ['objectClass','cn']
         
     @unittest.skip('OpenLDAP Server is not set up for nested groups')

@@ -368,7 +368,7 @@ class DirectoryTools:
         '''
         return self.getObjectAttribute(dn=dn,attribute=attribute)
 
-    def getMultiAttributes(self,dn,attributes):
+    def getObjectAttributes(self,dn,attributes):
         '''
         Get multiple attributes from the server for the specified object.
         

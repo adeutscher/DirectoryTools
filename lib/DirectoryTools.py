@@ -89,7 +89,7 @@ class DirectoryTools:
         if enableStdOut:
             self.enableStdOut()
         else:
-            self.logger.addHandler(logging.NullHandler())
+            self.logger.addHandler(NullHandler())
         
         ## Dictionary of property values.
         self.properties = self.defaultProperties.copy()
@@ -1373,3 +1373,24 @@ class UserAccountControlManager:
             An integer made of the sum of all activated UAC flags.
         '''
         return self.getSum(extraUacKeys,extraUacValues)
+
+class NullHandler(logging.Handler):
+    """
+    This handler does nothing. It's intended to be used to avoid the
+    "No handlers could be found for logger XXX" one-off warning. This is
+    important for library code, which may contain code to log events. If a user
+    of the library does not configure logging, the one-off warning might be
+    produced; to avoid this, the library developer simply needs to instantiate
+    a NullHandler and add it to the top-level logger of the library module or
+    package.
+
+    This class was added manually to DirectoryTools because it didn't exist in Python until 2.7.
+    """
+    def handle(self, record):
+        pass
+
+    def emit(self, record):
+        pass
+
+    def createLock(self):
+        self.lock = None

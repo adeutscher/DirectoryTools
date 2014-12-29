@@ -1,7 +1,7 @@
 
 __version__ = 0.1
 
-import ldap,re,sys,traceback
+import base64,binascii,re,sys,traceback
 from time import time
 from datetime import datetime
 import ConfigParser
@@ -10,9 +10,6 @@ import logging
 import DirectoryToolsIndexes as index
 import DirectoryToolsSchemas as schema
 import DirectoryToolsExceptions as exceptions
-
-# For Utilities:
-import base64
 
 DEBUG_LEVEL_NONE = 0
 DEBUG_LEVEL_MINOR = 1
@@ -1106,17 +1103,133 @@ class Utilities:
     '''
     Contains various utility methods to support DirectoryTools methods.
     '''
-    
+
+    def decodeMicrosoftSid(self,encodedString):
+        '''
+        Decode a Microsoft SID.
+
+        Args:
+            encodedString: Base64-encoded string of binary data, as one might find when directly querying an LDAP server.
+
+        Returns:
+            A string containing a translated SID value.
+        '''
+        hexString = binascii.b2a_hex(binascii.a2b_base64(encodedString))
+        numberList = []
+        stringList = []
+
+        # Process the revision number.
+        numberList.append(int(hexString[0:2],16))
+
+        # Decoding SID Format r1.
+        if numberList[0] == 1:
+            # Process the sub-ID count.
+            numberList.append(int(hexString[2:4],16))
+            # Process Identifier Authority.
+            identifierAuthority = int(hexString[4:16],16)
+            i = 16
+            while i < len(hexString):
+                numberList.append(self.decodeMicrosoftSubAuthority(hexString[i:i+8]))
+                i+=8
+
+            # Convert list of numbers to list of strings.
+            for s in numberList:
+                stringList.append(str(s))
+
+            return str.format('S-{0}','-'.join(stringList))
+
+    def decodeMicrosoftSubAuthority(self,inputString):
+        '''
+        Active Directory sub authorities are stored as unsigned 32-bit integers that are stored in reverse byte order (Big Endian).
+
+        This method decodes the hex representation of a sub authority and gets its integer value.
+
+        Args:
+            inputString: Hex representation of a sub-authority. tored as unsigned 32-bit integers that are stored in reverse byte order (Big Endian)
+
+        Returns:
+            An integer containing the value stored in an Active Directory sub authority.
+        '''
+        s = []
+        i = 0
+        while i < len(inputString):
+            s.append(int(inputString[i:i+2],16))
+            i+=2
+        l=[]
+        l.append(int(s[0]))
+        l.append(int(s[1]) * int(pow(16,2)))
+        l.append(int(s[2]) * int(pow(16,4)))
+        l.append(int(s[3]) * int(pow(16,6)))
+        return sum(l)
+
+    def encodeMicrosoftSid(self,sid,authority=5):
+        '''
+        Encodes a Microsoft SID.
+
+        Args:
+            sid: Microsoft SID in (near) human-readable form
+            authority: Identifier authority used to create the object. I'm not terribly familiar with this value, but I do know that it is not stored in the human-readable SID.
+
+        Returns:
+            A base64-encoded string of binary data, as one might find when directly querying an LDAP server.
+        '''
+        componentList = sid.split('-')
+
+        # Convert revision number to one hexidecimal digit in string form.
+        revisionNumber = re.sub(r'^0x','',hex(int(componentList[1],10))).rjust(2,'0')
+
+        # Decoding SID Format r1.
+        if int(componentList[1],10) == 1:
+            # Convert the Sub-Id count to one hexidecimal digit in string form.
+            subIdCount = re.sub(r'^0x','',hex(int(componentList[2],10))).rjust(2,'0')
+
+            # Convert the identifier authority to one hexidecimal digit in string form.
+            identifierAuthority = re.sub(r'^0x','',hex(authority)).rjust(12,'0')
+
+            # Manage remaining sub-ids. First subId is always index 3 of our broken-down SID.
+            subIdIndex = 3
+            subIdList = []
+            while subIdIndex < len(componentList):
+                subIdList.append(self.encodeMicrosoftSubAuthority(componentList[subIdIndex]))
+                subIdIndex+=1
+
+            # Combine values into one hex string.
+            sidHexString = "{0}{1}{2}{3}".format(revisionNumber,subIdCount,identifierAuthority,"".join(subIdList))
+
+            # Encode the hex string as a string of binary data that has been base64-encoded.
+            encodedSidHexString = binascii.b2a_base64(binascii.a2b_hex((sidHexString)))
+
+            # Encoded string has a newline tacked onto it. No idea why. Fixing and returning.
+            return re.sub(r'\r*\n*','',encodedSidHexString)
+
+    def encodeMicrosoftSubAuthority(self,inputString):
+        '''
+        Active Directory sub authorities are stored as unsigned 32-bit integers that are stored in reverse byte order (Big Endian). This method encodes the integer value of a sub authority to get its hex value.
+
+        Args:
+            inputString: String containing the integer value of a Microsoft sub authority.
+
+        Returns:
+            An string containing the hex representation of a sub-authority. Stored as unsigned 32-bit integers that are stored in reverse byte order (Big Endian).
+        '''
+        hexString = re.sub(r'^0x','',hex(int(inputString,10))).rjust(8,'0')
+        reverseHexString = ''
+        i = len(hexString)
+        while i > 0:
+            reverseHexString += hexString[i-2:i]
+            i-=2
+        return reverseHexString
+
     def getNTTimestampFromUnix(self,unixDate):
         '''
         Convert a UNIX timestamp to an NT timestamp.
-        
+
         NT Timestamps are used in the following LDAP implementations (list will be updated as I confirm more implementations)
             - Active Directory
-        
+
         Args:
             unixDate: Number representing a UNIX timestamp.
-            
+
         Returns:
             An NT timestamp that can be used in queries against Active Directory.
         '''

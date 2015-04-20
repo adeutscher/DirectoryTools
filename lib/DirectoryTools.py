@@ -91,6 +91,13 @@ class DirectoryTools:
         ## Dictionary of property values.
         self.properties = self.defaultProperties.copy()
         
+        if template:
+            try: 
+                self.properties.update(schema.getTemplate(template))
+            except:
+                print "Schema template '{0}' not found. Exiting...".format(template)
+                exit(1)
+        
         if configFile:
             try:
                 self.loadConfigFile(configFile)
@@ -98,12 +105,6 @@ class DirectoryTools:
                 print "Unable to load configuration file '{0}'".format(configFile);
                 exit(1);
         
-        if template:
-            try: 
-                self.properties.update(schema.getTemplate(template))
-            except:
-                print "Schema template '{0}' not found. Exiting...".format(template)
-                exit(1)        
         if properties:    
             try:        
                 self.properties.update(properties)

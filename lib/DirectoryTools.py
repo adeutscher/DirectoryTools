@@ -506,6 +506,43 @@ class DirectoryTools:
         else:
             return self.getProperty(index.BASE_DN)
 
+    def getUserGroups(self,userName,userNameIsDN=False,returnMembersAsDN=False):
+        '''
+        Get all groups that the user is a member of.
+        
+        Args:
+            userName: Name of the user to search for.
+            userNameIsDN: Set to True if the provided userName argument is a distinguished name, False for a UID.
+            returnMembersAsDN: Return the items in the list in DN format.
+        
+        Returns:
+            A list of groups that the specified user is a member of. List items are in either DN or CN format depending on value of returnMembersAsDN argument.
+        '''
+        
+        # Adjust if the provided username does not match the format that the LDAP server stores members in.
+        if userNameIsDN and not self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
+            queryUser = self.resolveUserUID(userName)
+        elif not userNameIsDN and self.getProperty(index.MEMBER_ATTRIBUTE_IS_DN):
+            queryUser = self.resolveUserDN(userName)
+        else:
+            # Use provided user
+            queryUser = userName
+            
+        # Get eligible groups from the server.
+        returnedGroups = self.query('{0}={1}'.format(self.getProperty(index.MEMBER_ATTRIBUTE),queryUser),[self.getProperty(index.MEMBER_ATTRIBUTE),self.getProperty(index.GROUP_INDEX_ATTRIBUTE)],self.getGroupBaseDN())
+        
+        groupList = []
+        for groupTuple in returnedGroups:
+            groupName,groupMembers = groupTuple
+            # Since we are populating our list from the object itself and not a property,
+            #   we are certain that we are working with a group name in DN format.
+            groupList.append(groupName)
+        
+        if returnMembersAsDN:
+            return groupList
+        else:
+            return [self.resolveGroupUID(groupDN) for groupDN in groupList]
+        
     def getUsersInGroup(self,groupName,returnMembersAsDN=False):
         '''
         Alias of getGroupMembers(), pre-configured for retrieving user objects.

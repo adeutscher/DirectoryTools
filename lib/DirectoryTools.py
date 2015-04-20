@@ -538,7 +538,7 @@ class DirectoryTools:
             #   we are certain that we are working with a group name in DN format.
             groupList.append(groupName)
         
-        if returnMembersAsDN:
+        if returnGroupsAsDN:
             return groupList
         else:
             return [self.resolveGroupUID(groupDN) for groupDN in groupList]

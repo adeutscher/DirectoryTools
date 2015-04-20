@@ -506,14 +506,14 @@ class DirectoryTools:
         else:
             return self.getProperty(index.BASE_DN)
 
-    def getUserGroups(self,userName,userNameIsDN=False,returnMembersAsDN=False):
+    def getUserGroups(self,userName,userNameIsDN=False,returnGroupsAsDN=False):
         '''
         Get all groups that the user is a member of.
         
         Args:
             userName: Name of the user to search for.
             userNameIsDN: Set to True if the provided userName argument is a distinguished name, False for a UID.
-            returnMembersAsDN: Return the items in the list in DN format.
+            returnGroupsAsDN: Return the items in the list in DN format.
         
         Returns:
             A list of groups that the specified user is a member of. List items are in either DN or CN format depending on value of returnMembersAsDN argument.

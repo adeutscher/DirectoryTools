@@ -435,7 +435,7 @@ class DirectoryTools:
                 return defaultOverride
             elif useDefault:
                 try:
-                    self.printDebug("Searching default properties...",self.LOG_LEVEL_DEBUG)
+                    self.printDebug("Searching default properties...",LOG_LEVEL_DEBUG)
                     return self.defaultProperties[key]
                 except KeyError, e:
                     # The property *still* wasn't found in the default properties.

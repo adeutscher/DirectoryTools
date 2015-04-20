@@ -203,7 +203,10 @@ class DirectoryTools:
         Returns:
             A string composed of a combination of the relative group base DN provided by the GROUP_RDN property and the base DN provided by the BASE_DN property.
         '''
-        return "{0}{1}".format(self.getProperty(index.GROUP_RDN),self.getProperty(index.BASE_DN))
+        if len(self.getProperty(index.GROUP_RDN)):
+            return "{0},{1}".format(self.getProperty(index.GROUP_RDN),self.getProperty(index.BASE_DN))
+        else:
+            return self.getProperty(index.BASE_DN)
           
 
     def getGroupMembers(self,groupName,groupNameIsDN=False,returnMembersAsDN=False,objectClassFilter=None,uidAttribute='uid',depth=0,cacheId=False):
@@ -497,7 +500,10 @@ class DirectoryTools:
         Returns:
             A string composed of a combination of the relative user base DN (indexes.USER_RDN) and the base DN (indexes.BASE_DN)
         '''
-        return "{0}{1}".format(self.getProperty(index.USER_RDN),self.getProperty(index.BASE_DN))
+        if len(self.getProperty(index.USER_RDN)):
+            return "{0},{1}".format(self.getProperty(index.USER_RDN),self.getProperty(index.BASE_DN))
+        else:
+            return self.getProperty(index.BASE_DN)
 
     def getUsersInGroup(self,groupName,returnMembersAsDN=False):
         '''

@@ -1,7 +1,7 @@
 
 __version__ = 0.1
 
-import base64,binascii,re,sys,traceback
+import base64,binascii,re,sys,traceback,ldap
 from time import time
 from datetime import datetime
 import ConfigParser
@@ -464,7 +464,7 @@ class DirectoryTools:
                 self.proxyHandle = connection
             except ldap.LDAPError, e:
                 # This exception is thrown when the call to connection.simple_bind_s fails.
-                print "Proxy connection failed."
+                # print "Proxy connection failed."
 
                 if e.args[0]['desc'] == 'Invalid credentials':
                     # The error happened because the proxy connection was given the wrong credentials.

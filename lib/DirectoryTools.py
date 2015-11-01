@@ -1429,20 +1429,20 @@ class UserAccountControlManager:
         }
         
         ## A list of value keys for enabled flags.
-        self.enabledFlags = []
+        self.flags = 0
         
     def disableFlag(self,uacFlag):
         '''
         Disables a UAC flag.
         
         Args:
-            uacFlag: UAC flag key to remove from the list of enabled keys.
+            uacFlag: UAC flag key to disable. Assumed that every flag provided is an .
             
         Returns:
-            True of the value was unset, False if it wasn't there to begin with.
+            True if all of the values given were unset, False if not all of them were set.
         '''
-        if uacFlag in self.enabledFlags:
-            self.enabledFlags.remove(uacFlag)
+        if self.flags & uacFlag == uacFlag:
+            self.flags ^= uacFlag
             return True
             
         return False
@@ -1458,29 +1458,9 @@ class UserAccountControlManager:
             True if the value was properly set, False otherwise.
         '''
         
-        if uacFlag not in self.enabledFlags:
-            self.enabledFlags.append(uacFlag)
-            return True
-        else:
-            return False
+        self.flags |= uacFlag
             
-    def getFlagValue(self,uacFlag):
-        '''
-        Get the value of the specified flag.
-        
-        Args:
-        uacFlag: The flag that we want to get the value for.
-        
-        Returns:
-            The number that represents the requested UAC flag. If an invalid index is given, then 0 is returned.
-        '''
-        
-        try:
-            return self.uacFlagKeyValues[uacFlag]
-        except KeyError:
-            return 0
-            
-    def getSum(self,extraUacKeys=[],extraUacValues=[]):
+    def getSum(self,extraUacValues=0):
         '''
         Compile UAC flags into a value.
         
@@ -1492,44 +1472,29 @@ class UserAccountControlManager:
             An integer made of the sum of all activated UAC flags.
         '''
         
-        flagSum = 0
-        
-        for i in self.enabledFlags:
-            try:
-                flagSum += int(self.uacFlagKeyValues[i])
-            except KeyError:
-                pass
-        
-        # Add extra flags.
-        for uacKey in extraUacKeys:
-            flagSum += self.getUacFlagValue(uacKey)
-        
-        # Add any extra values.
-        for uacValue in extraValueList:
-            flagSum += uacValue
-            
-        return flagSum
+        return self.flags | extraUacValues
             
     def isFlagEnabled(self,uacFlag):
         '''
-        Checks to see if a UAC flag has been enabled.
+        Checks to see if the UAC flag(s) given been enabled.
         
         Args:
-            uacFlag: UAC flag that we are checking for.
+            uacFlag: UAC flag(s) that we are checking for.
         '''
+        
+        return self.flags & uacFlag == uacFlag
             
-    def sumUac(self,extraUacKeys,extraUacValues):
+    def sumUac(self,extraUacValues=0):
         '''
         Old name of getSum, kept around as an alias.
         
         Args:
-            extraUacKeys: A list of UAC keys to be added to the sum in addition to the enabled flags.
-            extraUacValues: A list of integer values to add, in case there were some undocumented flags that I missed.
+            extraUacValues: Extra flags to add, in case there were some undocumented flags that I missed.
             
         Returns:
             An integer made of the sum of all activated UAC flags.
         '''
-        return self.getSum(extraUacKeys,extraUacValues)
+        return self.getSum(extraUacValues)
 
 class NullHandler(logging.Handler):
     """

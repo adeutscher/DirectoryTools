@@ -9,8 +9,6 @@
 #        Set configuration variables below under the function definitions!           #
 ######################################################################################
 
-#set -x
-
 apply_iptables_rule(){
     local subject=$1
     local filter=$2
@@ -31,6 +29,21 @@ apply_special_iptables_rule(){
     #echo $IPTABLES -I "$OPENVPN_CHAIN" -s $subject $filter -j ACCEPT -m comment --comment "$RULE_COMMENT"
     if [ -n "$subject" ] && [ -n "$filter" ]; then
         $IPTABLES -I "$OPENVPN_SPECIAL_RULES_CHAIN" $filter -j ACCEPT -m comment --comment "$RULE_COMMENT (user:$username,ip:$subject,type:special_rule)"
+    fi
+}
+
+apply_self_iptables_rules(){
+    # IP of new client
+    local new_ip=$1
+    # IP of existing client
+    local existing_ip=$2
+
+    # echo "Applying self-access rules to machines belonging to $username"
+    
+    if [ -n "$existing_ip" ]; then
+        existing_comment=$(format_comment "$existing_ip")
+        $IPTABLES -I "$OPENVPN_SELF_RULES_CHAIN" -s $new_ip -d $existing_ip -j ACCEPT -m comment --comment "$RULE_COMMENT $existing_comment (user:$username,ip:$new_ip->$existing_ip,type:self_access_rule)"
+        $IPTABLES -I "$OPENVPN_SELF_RULES_CHAIN" -s $existing_ip -d $new_ip -j ACCEPT -m comment --comment "$RULE_COMMENT $existing_comment (user:$username,ip:$existing_ip->$new_ip,type:reverse_self_access_rule)"
     fi
 }
 
@@ -68,19 +81,51 @@ apply_rules(){
         apply_special_iptables_rule ${SUBJECT} "-s 192.168.1.0/24 -d 192.168.0.0/24"
         ;;
     esac
+    
+    # Check to see if there are any other cases of the connecting username.
+    if [ -n "$STATUS_FILE" ] && [ -f "$STATUS_FILE" ]; then
+        for instance in $(cat "$STATUS_FILE" | grep ",$username," | sed "/:${trusted_port},/d" | cut -d, -f 1); do
+            apply_self_iptables_rules "${SUBJECT}" "${instance}"
+        done
+    fi
+
 }
 
 create_structure(){
 
-    # Make sure that the VPN chain does not currently exist
     if ! iptables -nvL "$OPENVPN_CHAIN" 2> /dev/null >&2; then
-        $IPTABLES -N "$OPENVPN_CHAIN"
+    
+        echo "Creating $OPENVPN_CHAIN..."
+    
+        $IPTABLES -N "$OPENVPN_CHAIN" 2> /dev/null
+        
+        # We will now be working with an empty chain, one way or the other. Add default rules.
         $IPTABLES -A "$OPENVPN_CHAIN" -j DROP -m comment --comment "$OPENVPN_INSTANCE Fallback DROP Rule"
-     fi
-
+    fi
+    
     # Make a table for special per-client rules
     if ! iptables -nvL "$OPENVPN_SPECIAL_RULES_CHAIN" 2> /dev/null >&2; then
+        echo "Creating $OPENVPN_SPECIAL_RULES_CHAIN..."
         $IPTABLES -N "$OPENVPN_SPECIAL_RULES_CHAIN"
+    fi
+    
+    # Make a table for allowing clients to get at their other devices
+    if ! iptables -nvL "$OPENVPN_SELF_RULES_CHAIN" 2> /dev/null >&2; then
+        echo "Creating $OPENVPN_SELF_RULES_CHAIN..."
+        $IPTABLES -N "$OPENVPN_SELF_RULES_CHAIN"
+    fi
+    
+    if echo "${script_type}" | grep -q '^up$'; then
+        # If we are bringing up the OpenVPN server, flush for good measure in case any old rules stayed around.
+        
+        # Main chain
+        $IPTABLES -F "$OPENVPN_CHAIN"
+        # Re-add default rule for main chain.
+        $IPTABLES -A "$OPENVPN_CHAIN" -j DROP -m comment --comment "$OPENVPN_INSTANCE Fallback DROP Rule"
+        # Special rules
+        $IPTABLES -F "$OPENVPN_SPECIAL_RULES_CHAIN"
+        # Self rules
+        $IPTABLES -F "$OPENVPN_SELF_RULES_CHAIN"
     fi
     
     local parent_chain=$1
@@ -90,25 +135,30 @@ create_structure(){
         # Check that the parent chain exists and does
         #     not currently have a link to the VPN rules.
         echo "Checking to attach to parent chain: $parent_chain"
-        iptables -nvL  "$parent_chain" 2> /dev/null >&2
-        local stage1_result=$?
         
-        if [ "$stage1_result" -eq 0 ] && ! iptables -nvL "$parent_chain" 2> /dev/null | grep -q "$OPENVPN_CHAIN"; then 
-            $IPTABLES -I $parent_chain -i "$OPENVPN_INTERFACE" -j $OPENVPN_CHAIN 2> /dev/null
-        fi
+        if iptables -nvL  "$parent_chain" 2> /dev/null >&2; then
         
-        if [ "$stage1_result" -eq 0 ] && ! iptables -nvL "$parent_chain" 2> /dev/null | grep -q "$OPENVPN_SPECIAL_RULES_CHAIN"; then 
-            $IPTABLES -I $parent_chain -j $OPENVPN_SPECIAL_RULES_CHAIN 2> /dev/null
+            if ! iptables -nvL "$parent_chain" 2> /dev/null | grep -q "$OPENVPN_CHAIN"; then 
+                $IPTABLES -I $parent_chain -i "$OPENVPN_INTERFACE" -j $OPENVPN_CHAIN 2> /dev/null
+            fi
+
+            if ! iptables -nvL "$parent_chain" 2> /dev/null | grep -q "$OPENVPN_SPECIAL_RULES_CHAIN"; then 
+                $IPTABLES -I $parent_chain -j $OPENVPN_SPECIAL_RULES_CHAIN 2> /dev/null
+            fi
+
+            if ! iptables -nvL "$parent_chain" 2> /dev/null | grep -q "$OPENVPN_SELF_RULES_CHAIN"; then 
+                $IPTABLES -I $parent_chain -i "$OPENVPN_INTERFACE" -o "$OPENVPN_INTERFACE" -j $OPENVPN_SELF_RULES_CHAIN 2> /dev/null
+            fi
         fi
     fi
 }
 
 flush_rules_for_host(){
     if [ -n "$RULE_COMMENT" ]; then
-        for chain in $OPENVPN_CHAIN $OPENVPN_SPECIAL_RULES_CHAIN; do
+        for chain in $OPENVPN_CHAIN $OPENVPN_SPECIAL_RULES_CHAIN $OPENVPN_SELF_RULES_CHAIN; do
             patterns="$RULE_COMMENT"
-            # If you want to be *absolutely* sure that rules are flushed for a given user,
-            #   uncomment the below three lines.
+            # Below: Add an extra pattern to confirm by username that things are missing.
+            # WARNING: THIS WILL CONFLICT WITH ALLOWING MULTIPLE HOSTS PER CLIENT
             #if [ -n "$username" ]; then
             #    patterns="$patterns $(echo "user:$username," | sed 's/\ /_/g')"
             #fi
@@ -127,13 +177,13 @@ flush_rules_for_host(){
 
 do_client_connect(){
     set_variables
-    create_structure "$STRUCTURE_PARENT_CHAIN"
+    create_structure "forwarding_rule"
     apply_rules
 }
 
 do_client_disconnect(){
     set_variables
-    create_structure "$STRUCTURE_PARENT_CHAIN"
+    create_structure "forwarding_rule"
     flush_rules_for_host
 }
 
@@ -170,11 +220,12 @@ do_up(){
             fi
         fi
         
-        create_structure "$STRUCTURE_PARENT_CHAIN"
+        create_structure "forwarding_rule"
         
         # For the purposes of this setup, device is assumed to be statically set.
-        # Parse config for pool variable.
-        local pool_file=$(cat "$config_file" | grep ifconfig-pool-persist | awk '{print $2}')
+        # Parse config for pool variable (currently not in use, since I do not trust the pool file's contents anymore).
+        #local pool_file=$(cat "$config_file" | grep ifconfig-pool-persist | awk '{print $2}')
+        
         if [ -n "$pool_file" ] && [ -f "$pool_file" ]; then
             while read line; do
                 if [ -n "$line" ]; then
@@ -193,6 +244,10 @@ do_up(){
     fi
     
     return 0 
+}
+
+format_comment(){
+    echo "$RULE_HEADERS$(echo ${1} | sed 's/\./_/g')_"
 }
 
 remote_call(){
@@ -225,15 +280,19 @@ set_instance_name(){
         OPENVPN_INSTANCE="$1"
         OPENVPN_CHAIN="$OPENVPN_INSTANCE-rules"
         OPENVPN_SPECIAL_RULES_CHAIN="$OPENVPN_INSTANCE-special-rules"
+        OPENVPN_SELF_RULES_CHAIN="$OPENVPN_INSTANCE-self-rules"
     fi
 }
 
 set_variables(){
     # Set dynamic variables.
-    config_file=${config:-openvpn}
+    config_file=${CONFIG_DIR}/${config:-openvpn.conf}
     set_instance_name "$(basename "$config_file" | cut -d'.' -f 1)"
     SUBJECT=$ifconfig_pool_remote_ip
-    RULE_COMMENT="$RULE_HEADER$(echo $SUBJECT | sed 's/\./_/g')_"
+    RULE_COMMENT=$(format_comment "${SUBJECT}")
+    if [ -f "$config_file" ]; then
+        STATUS_FILE=$(cat "$config_file" | grep ^status\  | awk '{print $2}')
+    fi
 }
 
 # Define static shortcuts for server resources
@@ -243,19 +302,17 @@ address_dns_server=192.168.0.1
 # Define commands and static variables for iptables rules.
 # Using echo as a debug for development
 IPTABLES="iptables"
+CONFIG_DIR=/etc/openvpn
 OPENVPN_INTERFACE=$dev
-# Chain to attach OpenVPN instance rules to.
-STRUCTURE_PARENT_CHAIN="forwarding_rule"
 # Default instance name.
 set_instance_name "openvpn"
 RULE_HEADER="host_"
 
-CURL_IP=$address_web_server
+CURL_IP="$address_web_server"
 CURL_URL="https://$CURL_IP/auth"
 TOKEN="crude-security-password"
 OTHER_CURL_SWITCHES="-k"
 
-#echo "Script Type: $script_type"
 case "${script_type:-sourced}" in
 "client-connect")
     do_client_connect

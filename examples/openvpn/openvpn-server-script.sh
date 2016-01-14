@@ -9,6 +9,25 @@
 #        Set configuration variables below under the function definitions!           #
 ######################################################################################
 
+urlencode(){
+    local length="${#1}";
+    for ((i = 0; i < length; i++ ))
+    do
+        local c="${1:i:1}";
+        case $c in
+            [a-zA-Z0-9.~_-])
+                printf "$c"
+            ;;
+            *)
+                printf '%s' '$c' | xxd -p -c1 | while read c; do
+                    printf '%%%s' "$c";
+                done
+            ;;
+        esac;
+    done;
+    unset i
+}
+
 apply_iptables_rule(){
     local subject=$1
     local filter=$2
@@ -49,7 +68,7 @@ apply_self_iptables_rules(){
 
 apply_rules(){
     flush_rules_for_host
-    groups=$(remote_call "groups" "user=$username" | cut -d':' -f 2)
+    groups=$(remote_call "groups" "user=$(urlencode "$username")" | cut -d':' -f 2)
     #echo "Groups: $groups"
     if [ -n "$groups" ]; then
         for group in $groups; do
@@ -190,7 +209,7 @@ do_client_disconnect(){
 do_authenticate(){
     set_variables
     
-    local response=$(remote_call "auth" "user=$username&password=$password")
+    local response=$(remote_call "auth" "user=$(urlencode "$username")&password=$(urlencode "$password")")
 
     echo "Response: $response"
 
@@ -262,15 +281,15 @@ remote_call(){
     fi
 
     if [ -n "$TOKEN" ] && [ -n "$postData" ]; then
-        postData="token=$TOKEN&$postData"
+        postData="token=$(urlencode "$TOKEN")&$postData"
     elif [ -n "$TOKEN" ]; then
-        postData="$TOKEN"
+        postData="$(urlencode "$TOKEN")"
     fi
 
     if [ -n "$postData" ]; then
         curl -s $OTHER_CURL_SWITCHES -X POST --data "$postData" $curlPath
     else
-        curl -s $OTHER_CURL_SWITCHES -X POST --data "$postData" $curlPath
+        curl -s $OTHER_CURL_SWITCHES $curlPath
     fi
 }
 

@@ -9,23 +9,19 @@
 #        Set configuration variables below under the function definitions!           #
 ######################################################################################
 
-urlencode(){
-    local length="${#1}";
-    for ((i = 0; i < length; i++ ))
-    do
-        local c="${1:i:1}";
-        case $c in
-            [a-zA-Z0-9.~_-])
-                printf "$c"
-            ;;
-            *)
-                printf '%s' '$c' | xxd -p -c1 | while read c; do
-                    printf '%%%s' "$c";
-                done
-            ;;
-        esac;
-    done;
-    unset i
+urlencode() {
+    # urlencode with thanks to https://blogs.gnome.org/shaunm/2009/12/05/urlencode-and-urldecode-in-sh/
+    local arg="$1"
+    local i="0"
+    while [ "$i" -lt ${#arg} ]; do
+        c=${arg:$i:1}
+        if echo "$c" | grep -q '[a-zA-Z/:_\.\-]'; then
+            echo -n "$c"
+        else
+            printf "%%%X" "'$c'"
+        fi
+        local i=$((i+1))
+    done
 }
 
 apply_iptables_rule(){
